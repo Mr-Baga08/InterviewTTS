@@ -1,282 +1,393 @@
-import Link from "next/link";
 import Image from "next/image";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
-import { Button } from "@/components/ui/button";
-import InterviewCard from "@/components/InterviewCard";
+import Agent from "@/components/Agent";
+import { getRandomInterviewCover } from "@/lib/utils";
 
-import { getCurrentUser } from "@/lib/actions/auth.action";
 import {
-  getInterviewsByUserId,
-  getLatestInterviews,
+  getFeedbackByInterviewId,
+  getInterviewById,
 } from "@/lib/actions/general.action";
+import { getCurrentUser } from "@/lib/actions/auth.action";
+import DisplayTechIcons from "@/components/DisplayTechIcons";
 
-async function Home() {
-  const user = await getCurrentUser();
+// Enhanced types for better type safety
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
 
-  const [userInterviews, allInterview] = await Promise.all([
-    getInterviewsByUserId(user?.id!),
-    getLatestInterviews({ userId: user?.id! }),
+interface InterviewStatusInfo {
+  status: string;
+  color: string;
+  bgColor: string;
+  icon: string;
+}
+
+interface TypeStyleInfo {
+  bg: string;
+  text: string;
+  border: string;
+}
+
+// Loading components for better UX
+const InterviewHeaderSkeleton = () => (
+  <div className="apple-glass apple-shadow-lg rounded-3xl p-6 animate-pulse">
+    <div className="flex justify-end mb-4">
+      <div className="w-24 h-8 bg-white/10 rounded-full" />
+    </div>
+    <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-white/10 rounded-2xl" />
+          <div className="space-y-2">
+            <div className="w-48 h-6 bg-white/10 rounded" />
+            <div className="w-32 h-4 bg-white/10 rounded" />
+          </div>
+        </div>
+      </div>
+      <div className="w-32 h-10 bg-white/10 rounded-xl" />
+    </div>
+  </div>
+);
+
+const InterviewDetails = async ({ params }: RouteParams) => {
+  // Await params properly
+  const { id } = await params;
+
+  // Parallel data fetching for better performance
+  const [user, interview] = await Promise.all([
+    getCurrentUser(),
+    getInterviewById(id)
   ]);
 
-  const hasPastInterviews = userInterviews?.length! > 0;
-  const hasUpcomingInterviews = allInterview?.length! > 0;
+  // Early redirect if no interview found
+  if (!interview.success || !interview.data) {
+    redirect("/");
+  }
+
+  const interviewData = interview.data;
+
+  // Fetch feedback only if we have valid user and interview
+  const feedback = user?.id ? await getFeedbackByInterviewId({
+    interviewId: id,
+    userId: user.id,
+  }) : null;
+
+  // Enhanced interview status logic
+  const getInterviewStatus = (): InterviewStatusInfo => {
+    if (feedback?.success && feedback.data?.id) {
+      return {
+        status: "Completed",
+        color: "text-emerald-400",
+        bgColor: "bg-emerald-500/20",
+        icon: "check-circle"
+      };
+    }
+    
+    if (interviewData.status === "in-progress") {
+      return {
+        status: "In Progress",
+        color: "text-amber-400",
+        bgColor: "bg-amber-500/20", 
+        icon: "clock"
+      };
+    }
+    
+    return {
+      status: "Ready to Start",
+      color: "text-blue-400", 
+      bgColor: "bg-blue-500/20",
+      icon: "play-circle"
+    };
+  };
+
+  // Enhanced type styling with more options
+  const getTypeStyle = (type: string): TypeStyleInfo => {
+    const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
+    
+    const typeStyles: Record<string, TypeStyleInfo> = {
+      "Behavioral": { 
+        bg: "bg-purple-500/20", 
+        text: "text-purple-400", 
+        border: "border-purple-500/30" 
+      },
+      "Technical": { 
+        bg: "bg-blue-500/20", 
+        text: "text-blue-400", 
+        border: "border-blue-500/30" 
+      },
+      "Mixed": { 
+        bg: "bg-indigo-500/20", 
+        text: "text-indigo-400", 
+        border: "border-indigo-500/30" 
+      },
+      "System Design": { 
+        bg: "bg-cyan-500/20", 
+        text: "text-cyan-400", 
+        border: "border-cyan-500/30" 
+      },
+      "Coding": { 
+        bg: "bg-green-500/20", 
+        text: "text-green-400", 
+        border: "border-green-500/30" 
+      }
+    };
+
+    return typeStyles[normalizedType] || { 
+      bg: "bg-gray-500/20", 
+      text: "text-gray-400", 
+      border: "border-gray-500/30" 
+    };
+  };
+
+  const statusInfo = getInterviewStatus();
+  const typeStyle = getTypeStyle(interviewData.type);
+  const feedbackData = feedback?.success ? feedback.data : null;
+
+  // Enhanced navigation handler with better UX
+  const handleViewFeedback = () => {
+    // Add loading state here if needed
+    window.location.href = `/interview/${id}/feedback`;
+  };
+
+  // Helper to get icon based on status
+  const getStatusIcon = (iconType: string) => {
+    const icons = {
+      "check-circle": (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      "play-circle": (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m-6-8h1m4 0h1" />
+        </svg>
+      ),
+      "clock": (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )
+    };
+    return icons[iconType as keyof typeof icons] || icons["play-circle"];
+  };
+
+  // Estimate interview duration
+  const estimatedDuration = Math.max(20, (interviewData.questions?.length || 0) * 3);
 
   return (
-    <div className="apple-home-container">
-      {/* Welcome Hero Section */}
-      <section className="apple-hero-section animate-apple-slide">
-        <div className="apple-glass apple-shadow-lg rounded-3xl p-8 lg:p-12">
-          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-            {/* Left Content */}
-            <div className="flex-1 text-center lg:text-left">
-              <div className="mb-6">
-                <h1 className="text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent leading-tight">
-                  Welcome back, {user?.name?.split(' ')[0]}!
-                </h1>
-                <h2 className="text-xl lg:text-2xl font-semibold text-white/90 mb-4">
-                  Master Your Next Interview with AI
-                </h2>
-                <p className="text-lg text-white/70 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                  Practice real interview questions, receive instant AI feedback, and build the confidence you need to land your dream job.
-                </p>
-              </div>
+    <div className="apple-interview-container">
+      {/* Enhanced Header Section */}
+      <div className="apple-interview-header animate-apple-slide">
+        <div className="apple-glass apple-shadow-lg rounded-3xl p-6">
+          {/* Status Badge with Icon */}
+          <div className="flex justify-end mb-4">
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${statusInfo.bgColor} border ${typeStyle.border}`}>
+              <div className={`w-2 h-2 rounded-full ${statusInfo.color.replace('text-', 'bg-')} animate-pulse`} />
+              <span className={`text-sm font-medium ${statusInfo.color}`}>
+                {statusInfo.status}
+              </span>
+            </div>
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Button asChild className="btn-primary apple-cta-button">
-                  <Link href="/interview" className="flex items-center gap-3 justify-center">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Start New Interview
-                  </Link>
-                </Button>
+          {/* Main Header Content */}
+          <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+            {/* Left Side - Interview Info */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              {/* Interview Avatar and Title */}
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/10 bg-gradient-to-br from-white/10 to-white/5">
+                    <Image
+                      src={interviewData.coverImage || getRandomInterviewCover()}
+                      alt={`${interviewData.role} interview cover`}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                      priority
+                    />
+                  </div>
+                  {/* Enhanced glow effect */}
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 blur-lg -z-10" />
+                </div>
                 
-                {hasPastInterviews && (
-                  <Button asChild className="btn-secondary apple-secondary-button">
-                    <Link href="#your-interviews" className="flex items-center gap-3 justify-center">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                      View Progress
-                    </Link>
-                  </Button>
-                )}
+                <div>
+                  <h1 className="text-2xl font-bold capitalize bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                    {interviewData.role} Interview
+                  </h1>
+                  <p className="text-white/60 font-medium">
+                    AI-Powered Practice Session
+                  </p>
+                  {/* Duration estimate */}
+                  <p className="text-white/40 text-sm">
+                    Est. {estimatedDuration} minutes
+                  </p>
+                </div>
               </div>
 
-              {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-4 mt-8 max-w-md mx-auto lg:mx-0">
-                <div className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div className="text-2xl font-bold text-blue-400">
-                    {userInterviews?.length || 0}
-                  </div>
-                  <div className="text-xs text-white/60 font-medium">Completed</div>
-                </div>
-                <div className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div className="text-2xl font-bold text-green-400">
-                    {allInterview?.length || 0}
-                  </div>
-                  <div className="text-xs text-white/60 font-medium">Available</div>
-                </div>
-                <div className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div className="text-2xl font-bold text-purple-400">AI</div>
-                  <div className="text-xs text-white/60 font-medium">Powered</div>
-                </div>
+              {/* Tech Stack */}
+              <div className="flex items-center gap-3">
+                <span className="text-white/50 text-sm font-medium">Tech Stack:</span>
+                <Suspense fallback={<div className="w-20 h-8 bg-white/10 rounded animate-pulse" />}>
+                  <DisplayTechIcons techStack={interviewData.techstack} />
+                </Suspense>
               </div>
             </div>
 
-            {/* Right Image */}
-            <div className="flex-shrink-0 relative">
-              <div className="relative">
-                <Image
-                  src="/robot.png"
-                  alt="AI Interview Assistant"
-                  width={350}
-                  height={350}
-                  className="drop-shadow-2xl"
-                  priority
-                />
-                {/* Glowing effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-indigo-500/20 rounded-full blur-3xl scale-110 -z-10" />
+            {/* Right Side - Interview Type Badge */}
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl ${typeStyle.bg} border ${typeStyle.border}`}>
+              <svg className={`w-4 h-4 ${typeStyle.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              <span className={`font-semibold ${typeStyle.text}`}>
+                {/mix/gi.test(interviewData.type) ? "Mixed" : interviewData.type}
+              </span>
+            </div>
+          </div>
+
+          {/* Enhanced Interview Stats Row */}
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-lg font-bold text-white">
+                  {interviewData.questions?.length || 0}
+                </div>
+                <div className="text-xs text-white/50">Questions</div>
               </div>
               
-              {/* Floating indicators */}
-              <div className="absolute top-8 right-8 bg-green-500/20 border border-green-500/30 rounded-full px-3 py-1 animate-pulse">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full" />
-                  <span className="text-xs text-green-400 font-medium">AI Online</span>
+              {feedbackData && (
+                <div className="text-center">
+                  <div className="text-lg font-bold text-emerald-400">
+                    {feedbackData.totalScore}/100
+                  </div>
+                  <div className="text-xs text-white/50">Last Score</div>
                 </div>
+              )}
+              
+              <div className="text-center">
+                <div className="text-lg font-bold text-blue-400">
+                  AI
+                </div>
+                <div className="text-xs text-white/50">Interviewer</div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Your Interviews Section */}
-      <section id="your-interviews" className="apple-section animate-apple-slide" style={{ animationDelay: "0.1s" }}>
-        <div className="apple-section-header">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+              {/* Difficulty indicator */}
+              {interviewData.metadata?.difficulty && (
+                <div className="text-center">
+                  <div className="text-lg font-bold text-amber-400">
+                    {interviewData.metadata.difficulty}
+                  </div>
+                  <div className="text-xs text-white/50">Difficulty</div>
+                </div>
+              )}
             </div>
-            <h2 className="text-2xl font-bold text-white">Your Interview History</h2>
-          </div>
-          <p className="text-white/70 mb-8">
-            Track your progress and review your completed interview sessions
-          </p>
-        </div>
 
-        <div className="apple-cards-grid">
-          {hasPastInterviews ? (
-            userInterviews?.map((interview, index) => (
-              <div 
-                key={interview.id} 
-                className="animate-apple-card"
-                style={{ animationDelay: `${0.1 + index * 0.05}s` }}
+            {/* Enhanced Quick Action Button */}
+            {feedbackData && (
+              <button
+                onClick={handleViewFeedback}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all duration-200 group"
+                aria-label="View interview feedback"
               >
-                <InterviewCard
-                  userId={user?.id}
-                  interviewId={interview.id}
-                  role={interview.role}
-                  type={interview.type}
-                  techstack={interview.techstack}
-                  createdAt={interview.createdAt}
-                />
-              </div>
-            ))
-          ) : (
-            <div className="apple-empty-state">
-              <div className="apple-glass rounded-2xl p-8 text-center">
-                <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">Start Your First Interview</h3>
-                <p className="text-white/60 mb-6">
-                  You haven't taken any interviews yet. Create your first AI-powered practice session to get started.
-                </p>
-                <Button asChild className="btn-primary">
-                  <Link href="/interview">Create Interview</Link>
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Available Interviews Section */}
-      <section className="apple-section animate-apple-slide" style={{ animationDelay: "0.2s" }}>
-        <div className="apple-section-header">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-white">Practice Opportunities</h2>
+                <svg className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
+                  View Feedback
+                </span>
+              </button>
+            )}
           </div>
-          <p className="text-white/70 mb-8">
-            Explore curated interview sessions from various companies and roles
-          </p>
         </div>
+      </div>
 
-        <div className="apple-cards-grid">
-          {hasUpcomingInterviews ? (
-            allInterview?.map((interview, index) => (
-              <div 
-                key={interview.id} 
-                className="animate-apple-card"
-                style={{ animationDelay: `${0.2 + index * 0.05}s` }}
-              >
-                <InterviewCard
-                  userId={user?.id}
-                  interviewId={interview.id}
-                  role={interview.role}
-                  type={interview.type}
-                  techstack={interview.techstack}
-                  createdAt={interview.createdAt}
-                />
-              </div>
-            ))
-          ) : (
-            <div className="apple-empty-state">
-              <div className="apple-glass rounded-2xl p-8 text-center">
-                <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">No Interviews Available</h3>
-                <p className="text-white/60 mb-6">
-                  Check back later for new practice opportunities, or create your own custom interview session.
-                </p>
-                <Button asChild className="btn-primary">
-                  <Link href="/interview">Create Custom Interview</Link>
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Success Tips Section */}
-      <section className="apple-section animate-apple-slide" style={{ animationDelay: "0.3s" }}>
+      {/* Enhanced Pre-Interview Instructions */}
+      <div className="apple-interview-instructions animate-apple-slide" style={{ animationDelay: "0.1s" }}>
         <div className="apple-glass rounded-2xl p-6">
-          <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Interview Success Tips
-          </h3>
+            Before You Begin
+          </h2>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-center group hover:bg-white/8 transition-all duration-300">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Audio Check */}
+            <div className="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/8 transition-colors group">
+              <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-500/30 transition-colors">
+                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </div>
-              <h4 className="font-medium text-white mb-1">Practice Regularly</h4>
-              <p className="text-xs text-white/60">Consistency builds confidence</p>
+              <div>
+                <h3 className="font-medium text-white mb-1">Audio Check</h3>
+                <p className="text-sm text-white/70">Ensure your microphone is working properly</p>
+              </div>
             </div>
 
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-center group hover:bg-white/8 transition-all duration-300">
-              <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Time Management */}
+            <div className="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/8 transition-colors group">
+              <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-green-500/30 transition-colors">
+                <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h4 className="font-medium text-white mb-1">Take Your Time</h4>
-              <p className="text-xs text-white/60">Think before you speak</p>
+              <div>
+                <h3 className="font-medium text-white mb-1">Take Your Time</h3>
+                <p className="text-sm text-white/70">Think before answering, quality over speed</p>
+              </div>
             </div>
 
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-center group hover:bg-white/8 transition-all duration-300">
-              <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {/* Natural Communication */}
+            <div className="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/8 transition-colors group">
+              <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-purple-500/30 transition-colors">
+                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
-              <h4 className="font-medium text-white mb-1">Review Feedback</h4>
-              <p className="text-xs text-white/60">Learn from each session</p>
-            </div>
-
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-center group hover:bg-white/8 transition-all duration-300">
-              <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+              <div>
+                <h3 className="font-medium text-white mb-1">Be Natural</h3>
+                <p className="text-sm text-white/70">Speak as you would in a real interview</p>
               </div>
-              <h4 className="font-medium text-white mb-1">Stay Confident</h4>
-              <p className="text-xs text-white/60">Believe in your abilities</p>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+
+      {/* Enhanced Agent Component Wrapper */}
+      <div className="apple-interview-agent animate-apple-slide" style={{ animationDelay: "0.2s" }}>
+        <div className="relative">
+          {/* Enhanced background glow effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-indigo-500/5 rounded-3xl blur-3xl -z-10 scale-110" />
+          
+          <Suspense fallback={
+            <div className="apple-glass rounded-3xl p-8 text-center">
+              <div className="animate-pulse">
+                <div className="w-32 h-32 bg-white/10 rounded-full mx-auto mb-4" />
+                <div className="w-48 h-6 bg-white/10 rounded mx-auto mb-2" />
+                <div className="w-32 h-4 bg-white/10 rounded mx-auto" />
+              </div>
+            </div>
+          }>
+            <Agent
+              userName={user?.name || "User"}
+              userId={user?.id || ""}
+              interviewId={id}
+              type="interview"
+              questions={interviewData.questions}
+              feedbackId={feedbackData?.id}
+            />
+          </Suspense>
+        </div>
+      </div>
+
+      {/* Enhanced Floating Decorative Elements */}
+      <div className="absolute top-20 right-10 w-20 h-20 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-2xl animate-float opacity-50" />
+      <div className="absolute bottom-32 left-10 w-16 h-16 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full blur-xl animate-float opacity-50" style={{ animationDelay: "3s" }} />
+      <div className="absolute top-1/2 right-20 w-12 h-12 bg-gradient-to-br from-indigo-500/15 to-transparent rounded-full blur-xl animate-float opacity-30" style={{ animationDelay: "6s" }} />
     </div>
   );
-}
+};
 
-export default Home;
+export default InterviewDetails;

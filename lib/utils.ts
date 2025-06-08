@@ -359,7 +359,7 @@ export const getRandomInterviewCover = (options: {
   const { seed, excludeCover, preferredCovers } = options;
 
   try {
-    if (!interviewCovers || interviewCovers.length === 0) {
+    if (!interviewCovers) {
       log('No interview covers available, using fallback');
       return CONFIG.fallbacks.interviewCover;
     }

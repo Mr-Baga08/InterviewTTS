@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { db } from "@/firebase/admin";
 import { feedbackSchema } from "@/constants";
+import { CreateFeedbackParams, Interview, GetFeedbackByInterviewIdParams, Feedback, GetLatestInterviewsParams } from "@/types";
 
 // Enhanced types for better error handling
 interface ActionResult<T = undefined> {

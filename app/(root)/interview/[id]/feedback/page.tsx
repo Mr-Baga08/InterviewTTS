@@ -9,18 +9,30 @@ import {
 } from "@/lib/actions/general.action";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/actions/auth.action";
+import { RouteParams } from "@/types";
 
 const Feedback = async ({ params }: RouteParams) => {
   const { id } = await params;
   const user = await getCurrentUser();
 
-  const interview = await getInterviewById(id);
-  if (!interview) redirect("/");
+  // Get interview data with proper error handling
+  const interviewResult = await getInterviewById(id);
+  if (!interviewResult.success || !interviewResult.data) {
+    redirect("/");
+  }
+  const interview = interviewResult.data;
 
-  const feedback = await getFeedbackByInterviewId({
+  // Get feedback data with proper error handling
+  const feedbackResult = await getFeedbackByInterviewId({
     interviewId: id,
     userId: user?.id!,
   });
+
+  // Handle case where feedback doesn't exist yet
+  if (!feedbackResult.success || !feedbackResult.data) {
+    redirect(`/interview/${id}`); // Redirect to take the interview
+  }
+  const feedback = feedbackResult.data;
 
   // Calculate overall performance level
   const getPerformanceLevel = (score: number) => {
@@ -31,7 +43,7 @@ const Feedback = async ({ params }: RouteParams) => {
     return { level: "Needs Improvement", color: "text-orange-400", bgColor: "bg-orange-500/20" };
   };
 
-  const performance = getPerformanceLevel(feedback?.totalScore || 0);
+  const performance = getPerformanceLevel(feedback.totalScore || 0);
 
   return (
     <div className="apple-feedback-container">
@@ -81,7 +93,7 @@ const Feedback = async ({ params }: RouteParams) => {
                       strokeWidth="8"
                       fill="transparent"
                       strokeDasharray={`${2 * Math.PI * 40}`}
-                      strokeDashoffset={`${2 * Math.PI * 40 * (1 - (feedback?.totalScore || 0) / 100)}`}
+                      strokeDashoffset={`${2 * Math.PI * 40 * (1 - (feedback.totalScore || 0) / 100)}`}
                       className="transition-all duration-1000 ease-out"
                     />
                     <defs>
@@ -93,7 +105,7 @@ const Feedback = async ({ params }: RouteParams) => {
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-white">{feedback?.totalScore || 0}</div>
+                      <div className="text-2xl font-bold text-white">{feedback.totalScore || 0}</div>
                       <div className="text-xs text-white/60">out of 100</div>
                     </div>
                   </div>
@@ -108,7 +120,7 @@ const Feedback = async ({ params }: RouteParams) => {
                 <div className="flex items-center gap-2 text-white/60">
                   <Image src="/calendar.svg" width={16} height={16} alt="calendar" />
                   <span className="text-sm">
-                    {feedback?.createdAt
+                    {feedback.createdAt
                       ? dayjs(feedback.createdAt).format("MMM D, YYYY h:mm A")
                       : "N/A"}
                   </span>
@@ -128,7 +140,7 @@ const Feedback = async ({ params }: RouteParams) => {
             </svg>
             Overall Assessment
           </h2>
-          <p className="text-white/80 leading-relaxed">{feedback?.finalAssessment}</p>
+          <p className="text-white/80 leading-relaxed">{feedback.finalAssessment}</p>
         </div>
       </div>
 
@@ -143,7 +155,11 @@ const Feedback = async ({ params }: RouteParams) => {
           </h2>
           
           <div className="space-y-4">
-            {feedback?.categoryScores?.map((category, index) => (
+            {feedback.categoryScores?.map((category: {
+              name: string;
+              score: number;
+              comment: string;
+            }, index: number) => (
               <div key={index} className="group">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium text-white/90">{category.name}</span>
@@ -181,7 +197,7 @@ const Feedback = async ({ params }: RouteParams) => {
             Key Strengths
           </h3>
           <ul className="space-y-2">
-            {feedback?.strengths?.map((strength, index) => (
+            {feedback.strengths?.map((strength: string, index: number) => (
               <li key={index} className="flex items-start gap-2 text-white/80">
                 <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -201,7 +217,7 @@ const Feedback = async ({ params }: RouteParams) => {
             Growth Opportunities
           </h3>
           <ul className="space-y-2">
-            {feedback?.areasForImprovement?.map((area, index) => (
+            {feedback.areasForImprovement?.map((area: string, index: number) => (
               <li key={index} className="flex items-start gap-2 text-white/80">
                 <svg className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
