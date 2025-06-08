@@ -9,10 +9,44 @@ import { vapi } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
 
-// Import the Message type and enums from vapi.d.ts
-import { Message, MessageRoleEnum } from "@/types/vapi";
-// Import CallStatus from the main types file
-import { CallStatus, type AgentProps } from "@/types";
+// Define all necessary types locally to avoid import issues
+enum CallStatus {
+  INACTIVE = "INACTIVE",
+  CONNECTING = "CONNECTING", 
+  ACTIVE = "ACTIVE",
+  PAUSED = "PAUSED",
+  RECONNECTING = "RECONNECTING",
+  FINISHED = "FINISHED",
+  ERROR = "ERROR",
+}
+
+enum MessageRoleEnum {
+  USER = "user",
+  SYSTEM = "system",
+  ASSISTANT = "assistant",
+}
+
+enum MessageTypeEnum {
+  TRANSCRIPT = "transcript",
+  FUNCTION_CALL = "function-call",
+  FUNCTION_CALL_RESULT = "function-call-result",
+  ADD_MESSAGE = "add-message",
+}
+
+enum TranscriptMessageTypeEnum {
+  PARTIAL = "partial",
+  FINAL = "final",
+}
+
+// Define Message interface locally
+interface Message {
+  type: string;
+  role: MessageRoleEnum;
+  transcript?: string;
+  transcriptType?: string;
+  timestamp?: number;
+  [key: string]: any; // Allow additional properties
+}
 
 // Helper function to convert MessageRoleEnum to string
 const convertRoleToString = (role: MessageRoleEnum): "user" | "system" | "assistant" => {
@@ -37,7 +71,7 @@ interface TranscriptMessage {
 }
 
 // AgentProps interface - simplified to match your existing usage
-interface AgentPropsSimple {
+interface AgentProps {
   userName: string;
   userId?: string;
   interviewId?: string;
@@ -53,7 +87,7 @@ const Agent = ({
   feedbackId,
   type,
   questions,
-}: AgentPropsSimple) => {
+}: AgentProps) => {
   const router = useRouter();
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
@@ -74,7 +108,7 @@ const Agent = ({
         const newMessage: TranscriptMessage = {
           id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           role: convertRoleToString(message.role),
-          content: message.transcript,
+          content: message.transcript || "",
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, newMessage]);

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ENHANCED TYPESCRIPT TYPES FOR THETRUTHSCHOOL.AI (COMPATIBILITY FIXED)
+   ENHANCED TYPESCRIPT TYPES FOR THETRUTHSCHOOL.AI
    ========================================================================== */
 
    import { z } from "zod";
@@ -35,6 +35,13 @@
        portfolio?: string;
        timezone?: string;
        preferredLanguage?: string;
+       isEmailVerified?: boolean;
+       onboardingCompleted?: boolean;
+       preferences?: {
+         emailNotifications: boolean;
+         interviewReminders: boolean;
+         progressReports: boolean;
+       };
      };
      
      // Career information
@@ -51,17 +58,6 @@
        };
      };
      
-     // Preferences and settings
-     preferences?: {
-       emailNotifications: boolean;
-       interviewReminders: boolean;
-       progressReports: boolean;
-       difficulty: QuestionDifficulty;
-       preferredInterviewTypes: InterviewType[];
-       theme: "light" | "dark" | "system";
-       language: string;
-     };
-     
      // Statistics and progress
      stats?: {
        interviewsCompleted: number;
@@ -69,8 +65,8 @@
        averageScore: number;
        bestScore: number;
        streak: number; // consecutive days with practice
-       lastActiveDate: string;
-       skillProgression: Record<string, number>; // skill -> proficiency score
+       lastActiveDate?: string;
+       skillProgression?: Record<string, number>; // skill -> proficiency score
      };
      
      // Account status
@@ -89,6 +85,15 @@
        twoFactorEnabled: boolean;
        passwordChangedAt?: string;
      };
+   
+     // Session info
+     sessionExpires?: string;
+     
+     // Metadata
+     metadata?: {
+       signUpMethod?: string;
+       version?: string;
+     };
    }
    
    // Enhanced Interview interface with comprehensive metadata
@@ -97,32 +102,33 @@
      role: string;
      level: ExperienceLevel;
      type: InterviewType;
-     questions: InterviewQuestion[];
+     questions: InterviewQuestion[] | string[]; // Support both formats
      techstack: string[];
      userId: string;
      finalized: boolean;
      
      // Enhanced metadata
      metadata?: {
-       difficulty: QuestionDifficulty;
-       estimatedDuration: number; // in minutes
+       difficulty?: QuestionDifficulty;
+       estimatedDuration?: number; // in minutes
        industry?: string;
        companySize?: CompanySize;
        focus?: string[]; // Focus areas like "System Design", "Leadership"
-       generatedBy: "AI" | "Manual" | "Template";
+       generatedBy?: "AI" | "Manual" | "Template";
        templateId?: string;
-       version: string;
-       requestMetadata?: {
-         userAgent?: string;
-         clientIP?: string;
-         processingTime?: number;
-       };
+       version?: string;
+       requestedAmount?: number;
+       actualAmount?: number;
+       processingTime?: number;
+       userAgent?: string;
+       clientIP?: string;
      };
      
      // Status and lifecycle
      status?: InterviewStatus;
      tags?: string[];
      coverImage?: string;
+     estimatedDuration?: number;
      
      // Analytics and tracking
      analytics?: {
@@ -191,7 +197,7 @@
        version: string;
        confidence: number; // 0-1, AI's confidence in the assessment
        processingTime: number;
-       tokens: {
+       tokens?: {
          input: number;
          output: number;
        };
@@ -244,7 +250,8 @@
      | "active" 
      | "completed" 
      | "archived" 
-     | "deleted";
+     | "deleted"
+     | "in-progress";
    
    export type PerformanceLevel = 
      | "Exceptional" 
@@ -270,13 +277,13 @@
       ========================================================================== */
    
    export interface InterviewQuestion {
-     id: string;
+     id?: string;
      question: string;
-     type: "technical" | "behavioral" | "situational" | "hypothetical";
-     difficulty: QuestionDifficulty;
-     category: string;
-     skills: string[]; // Skills this question tests
-     expectedDuration: number; // Expected time to answer in minutes
+     type?: "technical" | "behavioral" | "situational" | "hypothetical";
+     difficulty?: QuestionDifficulty;
+     category?: string;
+     skills?: string[]; // Skills this question tests
+     expectedDuration?: number; // Expected time to answer in minutes
      followUpQuestions?: string[];
      hints?: string[];
      idealAnswer?: {
@@ -382,6 +389,8 @@
      email: string;
      idToken: string;
      rememberMe?: boolean;
+     userAgent?: string;
+     ipAddress?: string;
      deviceInfo?: {
        userAgent: string;
        platform: string;
@@ -412,15 +421,20 @@
      refreshToken?: string;
      expiresAt?: string;
      errors?: string[];
+     code?: string;
+     data?: any;
      metadata?: {
-       sessionId: string;
-       deviceId: string;
+       sessionId?: string;
+       deviceId?: string;
        ipAddress?: string;
+       timestamp?: string;
+       requestId?: string;
+       version?: string;
      };
    }
    
    /* ==========================================================================
-      COMPONENT PROP INTERFACES (BACKWARD COMPATIBLE)
+      COMPONENT PROP INTERFACES
       ========================================================================== */
    
    // Backward compatible InterviewCardProps
@@ -455,7 +469,7 @@
      isDisabled?: boolean;
    }
    
-   // Backward compatible AgentProps
+   // Agent component props
    export interface AgentProps {
      // Core configuration
      userName: string;
@@ -545,7 +559,7 @@
    
    export interface RouteParams {
      params: Promise<Record<string, string>>;
-     searchParams: Promise<Record<string, string>>;
+     searchParams?: Promise<Record<string, string>>;
    }
    
    export interface ApiResponse<T = any> {
@@ -558,6 +572,8 @@
        details?: any;
        field?: string;
      };
+     errors?: string[];
+     code?: string;
      metadata?: {
        timestamp: string;
        requestId: string;
@@ -787,6 +803,16 @@
    export type { InterviewType as InterviewVariant };
    export type { PerformanceLevel };
    
-   // Note: Commented out to avoid potential circular dependencies
-   // export * from "./vapi";  // Import your existing VAPI types
-   // export * from "./api";   // Import your API-specific types
+   // Default export for the main types
+   export default {
+     User,
+     Interview,
+     Feedback,
+     TranscriptMessage,
+     CallStatus,
+     InterviewType,
+     ExperienceLevel,
+     QuestionDifficulty,
+     FormType,
+     ActionResult,
+   };
