@@ -63,6 +63,11 @@ interface AgentProps {
   questions?: string[];
 }
 
+const avatarFallbacks = {
+  ai: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 24 24' fill='none' stroke='%234ade80' stroke-width='2'%3E%3Cpath d='M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1v1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1v1.27c.6.34 1 .99 1 1.73a2 2 0 0 1-2 2 2 2 0 0 1-2-2c0-.74.4-1.39 1-1.73V17a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1v-1a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1V8.27c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z'/%3E%3C/svg%3E",
+  user: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E"
+};
+
 const Agent = ({
   userName,
   userId,
@@ -307,13 +312,16 @@ const Agent = ({
         {/* AI Interviewer Card */}
         <div className="card-interviewer">
           <div className="avatar">
-            <Image
+          <Image
               src="/ai-avatar.png"
               alt="AI Interviewer profile"
               width={65}
               height={54}
               className="object-cover rounded-full"
               priority
+              onError={(e) => {
+                e.currentTarget.src = avatarFallbacks.ai;
+              }}
             />
             {isSpeaking && <span className="animate-speak" />}
           </div>
@@ -323,13 +331,16 @@ const Agent = ({
         {/* User Profile Card */}
         <div className="card-border">
           <div className="card-content">
-            <Image
+          <Image
               src="/user-avatar.png"
               alt={`${userName}'s profile`}
               width={120}
               height={120}
               className="rounded-full object-cover size-[120px]"
               priority
+              onError={(e) => {
+                e.currentTarget.src = avatarFallbacks.user;
+              }}
             />
             <h3>{userName}</h3>
           </div>
