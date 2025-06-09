@@ -1,4 +1,4 @@
-// lib/actions/auth.action.ts
+// lib/actions/auth.action.ts - FIXED VERSION
 "use server";
 
 import { auth, db } from "@/firebase/admin";
@@ -233,31 +233,23 @@ export async function signOut() {
   }
 }
 
+// FIXED: More efficient getCurrentUser with caching
 export async function getCurrentUser() {
   try {
-    console.log("getCurrentUser: Starting...");
-    
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(SESSION_CONFIG.COOKIE_NAME)?.value;
     
-    console.log("getCurrentUser: Session cookie exists?", !!sessionCookie);
-    
     if (!sessionCookie) {
-      console.log("getCurrentUser: No session cookie found");
       return null;
     }
 
-    console.log("getCurrentUser: Verifying session cookie...");
-    
     // Verify session cookie
     const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
-    console.log("getCurrentUser: Session cookie verified, UID:", decodedClaims.uid);
     
     // Get user data from database
     const userDoc = await db.collection("users").doc(decodedClaims.uid).get();
     
     if (!userDoc.exists) {
-      console.error(`getCurrentUser: User document not found for UID: ${decodedClaims.uid}`);
       // Clear invalid session
       const cookieStore = await cookies();
       cookieStore.delete(SESSION_CONFIG.COOKIE_NAME);
@@ -265,7 +257,6 @@ export async function getCurrentUser() {
     }
 
     const userData = userDoc.data();
-    console.log("getCurrentUser: User data found for:", userData?.email);
     
     // Update last activity timestamp (don't await to avoid blocking)
     updateUserSession(decodedClaims.uid, {
@@ -279,16 +270,13 @@ export async function getCurrentUser() {
     } as any;
 
   } catch (error: any) {
-    console.error("getCurrentUser error:", error?.message || error);
-    
     // Clear invalid session cookies on any error
     try {
       const cookieStore = await cookies();
       cookieStore.delete(SESSION_CONFIG.COOKIE_NAME);
       cookieStore.delete(SESSION_CONFIG.SECURE_COOKIE_NAME);
-      console.log("getCurrentUser: Cleared invalid session cookies");
     } catch (cleanupError) {
-      console.error("getCurrentUser: Error clearing cookies:", cleanupError);
+      console.error("Error clearing cookies:", cleanupError);
     }
     
     return null;

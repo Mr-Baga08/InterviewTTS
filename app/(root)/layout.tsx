@@ -1,16 +1,16 @@
-// app/(root)/layout.tsx
+// app/(root)/layout.tsx - FIXED VERSION
 import Link from "next/link";
 import Image from "next/image";
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
-import { isAuthenticated } from "@/lib/actions/auth.action";
+import { getCurrentUser } from "@/lib/actions/auth.action";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
-  const isUserAuthenticated = await isAuthenticated();
+  const user = await getCurrentUser();
   
   // Only redirect if user is NOT authenticated
-  if (!isUserAuthenticated) {
+  if (!user) {
     console.log("🔥 RootLayout: User not authenticated, redirecting to sign-in");
     redirect("/sign-in");
   }
@@ -23,7 +23,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
       <nav className="apple-navbar">
         <div className="apple-navbar-content">
           {/* Logo and Brand */}
-          <Link href="/" className="apple-brand-link group">
+          <Link href="/dashboard" className="apple-brand-link group">
             <div className="relative">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-105">
                 <Image 
