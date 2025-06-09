@@ -1,3 +1,4 @@
+// app/(auth)/layout.tsx
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
@@ -5,7 +6,14 @@ import { isAuthenticated } from "@/lib/actions/auth.action";
 
 const AuthLayout = async ({ children }: { children: ReactNode }) => {
   const isUserAuthenticated = await isAuthenticated();
-  if (isUserAuthenticated) redirect("/");
+  
+  // Only redirect if user is authenticated AND we're not already on the redirect target
+  if (isUserAuthenticated) {
+    console.log("🔥 AuthLayout: User authenticated, redirecting to dashboard");
+    redirect("/dashboard"); // Redirect to a specific dashboard route instead of "/"
+  }
+
+  console.log("🔥 AuthLayout: User not authenticated, rendering auth layout");
 
   return (
     <div className="apple-auth-layout">

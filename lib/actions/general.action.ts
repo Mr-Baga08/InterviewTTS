@@ -484,7 +484,7 @@ export async function getLatestInterviews(
       .limit(limit)
       .get();
 
-    const interviews = querySnapshot.docs.map((doc) => ({
+    const interviews = querySnapshot.docs.map((doc: { id: any; data: () => any; }) => ({
       id: doc.id,
       ...doc.data(),
     })) as Interview[];

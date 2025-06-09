@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/general.action";
 import { getCurrentUser } from "@/lib/actions/auth.action";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
+import React from "react";
 
 // Enhanced types for better type safety
 interface RouteParams {
@@ -145,6 +146,27 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   const typeStyle = getTypeStyle(interviewData.type);
   const feedbackData = feedback?.success ? feedback.data : null;
 
+  // Convert InterviewQuestion[] to string[] for Agent component
+  const questionsAsStrings = React.useMemo(() => {
+    if (!interviewData.questions) return [];
+    
+    // Handle both string[] and InterviewQuestion[] formats
+    return interviewData.questions.map((question: any) => {
+      // If it's already a string, return as-is
+      if (typeof question === 'string') {
+        return question;
+      }
+      
+      // If it's an InterviewQuestion object, extract the question text
+      if (typeof question === 'object' && question !== null) {
+        return question.question || question.text || question.content || String(question);
+      }
+      
+      // Fallback for other types
+      return String(question);
+    });
+  }, [interviewData.questions]);
+
   // Enhanced navigation handler with better UX
   const handleViewFeedback = () => {
     // Add loading state here if needed
@@ -174,7 +196,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   };
 
   // Estimate interview duration
-  const estimatedDuration = Math.max(20, (interviewData.questions?.length || 0) * 3);
+  const estimatedDuration = Math.max(20, questionsAsStrings.length * 3);
 
   return (
     <div className="apple-interview-container">
@@ -230,7 +252,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
               <div className="flex items-center gap-3">
                 <span className="text-white/50 text-sm font-medium">Tech Stack:</span>
                 <Suspense fallback={<div className="w-20 h-8 bg-white/10 rounded animate-pulse" />}>
-                  <DisplayTechIcons techStack={interviewData.techstack} />
+                  <DisplayTechIcons techStack={interviewData.techstack || []} />
                 </Suspense>
               </div>
             </div>
@@ -251,7 +273,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
             <div className="flex items-center gap-6">
               <div className="text-center">
                 <div className="text-lg font-bold text-white">
-                  {interviewData.questions?.length || 0}
+                  {questionsAsStrings.length}
                 </div>
                 <div className="text-xs text-white/50">Questions</div>
               </div>
@@ -375,7 +397,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
               userId={user?.id || ""}
               interviewId={id}
               type="interview"
-              questions={interviewData.questions}
+              questions={questionsAsStrings}
               feedbackId={feedbackData?.id}
             />
           </Suspense>

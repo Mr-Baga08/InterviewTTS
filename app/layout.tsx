@@ -19,7 +19,7 @@ const monaSans = Mona_Sans({
     "sans-serif"
   ],
 });
-
+ 
 // Enhanced metadata with better SEO and social sharing
 export const metadata: Metadata = {
   title: {

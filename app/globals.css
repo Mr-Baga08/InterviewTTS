@@ -1,5 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @custom-variant dark (&:is(.dark *));
 
@@ -30,23 +31,29 @@
   --apple-gray-900: #111827;
   --apple-gray-950: #030712;
 
-  /* Glassmorphism Variables */
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-hover-bg: rgba(255, 255, 255, 0.06);
-  --glass-hover-border: rgba(255, 255, 255, 0.15);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 16px rgba(0, 0, 0, 0.08);
+  /* Glassmorphism Variables - Enhanced for dark theme */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-hover-bg: rgba(255, 255, 255, 0.12);
+  --glass-hover-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 16px rgba(0, 0, 0, 0.2);
   --glass-blur: blur(20px);
 
+  /* Form specific glass variables */
+  --glass-input-bg: rgba(255, 255, 255, 0.06);
+  --glass-input-border: rgba(255, 255, 255, 0.1);
+  --glass-input-focus-bg: rgba(255, 255, 255, 0.1);
+  --glass-input-focus-border: rgba(59, 130, 246, 0.4);
+
   /* Apple Shadows (Enhanced) */
-  --shadow-apple-sm: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.06);
-  --shadow-apple-md: 0 4px 16px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-apple-lg: 0 10px 32px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.1);
-  --shadow-apple-xl: 0 20px 64px rgba(0, 0, 0, 0.2), 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-apple-sm: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 4px rgba(0, 0, 0, 0.1);
+  --shadow-apple-md: 0 4px 16px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-apple-lg: 0 10px 32px rgba(0, 0, 0, 0.25), 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-apple-xl: 0 20px 64px rgba(0, 0, 0, 0.3), 0 8px 32px rgba(0, 0, 0, 0.2);
   --shadow-apple-premium: 
-    0 25px 80px rgba(0, 0, 0, 0.25),
-    0 12px 32px rgba(0, 0, 0, 0.15),
-    0 2px 16px rgba(0, 0, 0, 0.1),
+    0 25px 80px rgba(0, 0, 0, 0.35),
+    0 12px 32px rgba(0, 0, 0, 0.25),
+    0 2px 16px rgba(0, 0, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 
   /* Animation Curves */
@@ -54,65 +61,66 @@
   --ease-apple-sharp: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-apple-smooth: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Responsive Breakpoints */
-  --breakpoint-sm: 640px;
-  --breakpoint-md: 768px;
-  --breakpoint-lg: 1024px;
-  --breakpoint-xl: 1280px;
-  --breakpoint-2xl: 1536px;
-
   /* Enhanced Theme Variables for v4 Support */
   --radius: 0.75rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --constructive: oklch(0.646 0.222 142.5); /* Success green */
-  --warning: oklch(0.828 0.189 84.429); /* Warning yellow */
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: 0 0% 9%; /* Very dark background */
+  --foreground: 0 0% 98%;
+  --card: 0 0% 12%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 12%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 217 91% 60%; /* Blue primary */
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 16%;
+  --muted-foreground: 0 0% 64%;
+  --accent: 0 0% 16%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --constructive: 142 76% 36%; /* Success green */
+  --warning: 38 92% 50%; /* Warning yellow */
+  --border: 0 0% 100% / 0.1;
+  --input: 0 0% 100% / 0.08;
+  --ring: 217 91% 60%;
 }
 
-/* Dark Theme Variables */
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --constructive: oklch(0.646 0.222 142.5);
-  --warning: oklch(0.828 0.189 84.429);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+/* Dark Theme Variables - Force dark theme styles */
+.dark, :root {
+  --background: 0 0% 7%; /* Even darker for auth pages */
+  --foreground: 0 0% 98%;
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 2%;
+  --secondary: 0 0% 14%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 14%;
+  --muted-foreground: 0 0% 64%;
+  --accent: 0 0% 14%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --constructive: 142 76% 36%;
+  --warning: 38 92% 50%;
+  --border: 0 0% 100% / 0.1;
+  --input: 0 0% 100% / 0.08;
+  --ring: 217 91% 60%;
 
-  /* Dark mode glassmorphism adjustments */
-  --glass-bg: rgba(255, 255, 255, 0.03);
+  /* Enhanced dark mode glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.04);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-hover-bg: rgba(255, 255, 255, 0.05);
-  --glass-hover-border: rgba(255, 255, 255, 0.12);
+  --glass-hover-bg: rgba(255, 255, 255, 0.08);
+  --glass-hover-border: rgba(255, 255, 255, 0.15);
+  
+  /* Enhanced form inputs for dark mode */
+  --glass-input-bg: rgba(255, 255, 255, 0.05);
+  --glass-input-border: rgba(255, 255, 255, 0.08);
+  --glass-input-focus-bg: rgba(255, 255, 255, 0.08);
+  --glass-input-focus-border: rgba(59, 130, 246, 0.5);
 }
 
 /* ==========================================================================
@@ -121,7 +129,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
 
   html {
@@ -140,33 +148,36 @@
     backface-visibility: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    /* Force dark theme */
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 
   /* Enhanced Typography Scale */
   h1 { 
-    @apply text-4xl font-black tracking-tight leading-tight;
+    @apply text-4xl font-black tracking-tight leading-tight text-white;
     letter-spacing: -0.025em;
   }
   h2 { 
-    @apply text-3xl font-bold tracking-tight leading-tight;
+    @apply text-3xl font-bold tracking-tight leading-tight text-white;
     letter-spacing: -0.02em;
   }
   h3 { 
-    @apply text-2xl font-semibold tracking-tight leading-snug;
+    @apply text-2xl font-semibold tracking-tight leading-snug text-white;
     letter-spacing: -0.015em;
   }
   h4 { 
-    @apply text-xl font-semibold leading-snug;
+    @apply text-xl font-semibold leading-snug text-white;
     letter-spacing: -0.01em;
   }
   h5 { 
-    @apply text-lg font-medium leading-relaxed;
+    @apply text-lg font-medium leading-relaxed text-white;
   }
   h6 { 
-    @apply text-base font-medium leading-relaxed;
+    @apply text-base font-medium leading-relaxed text-white;
   }
   p { 
-    @apply text-base leading-relaxed;
+    @apply text-base leading-relaxed text-white/80;
     hanging-punctuation: first last;
   }
 
@@ -223,28 +234,6 @@
 .apple-shadow-lg { box-shadow: var(--shadow-apple-lg); }
 .apple-shadow-xl { box-shadow: var(--shadow-apple-xl); }
 
-/* Apple Interaction States */
-.apple-hover-lift {
-  transition: transform 0.3s var(--ease-apple);
-}
-.apple-hover-lift:hover {
-  transform: translateY(-4px);
-}
-
-.apple-hover-scale {
-  transition: transform 0.3s var(--ease-apple);
-}
-.apple-hover-scale:hover {
-  transform: scale(1.02);
-}
-
-.apple-press {
-  transition: transform 0.2s var(--ease-apple-sharp);
-}
-.apple-press:active {
-  transform: scale(0.98);
-}
-
 /* ==========================================================================
    ENHANCED COMPONENT STYLES
    ========================================================================== */
@@ -293,77 +282,73 @@
   }
 
   .btn-secondary:hover {
-    @apply apple-hover-lift;
     background: var(--glass-hover-bg);
     border-color: var(--glass-hover-border);
     box-shadow: var(--shadow-apple-md);
+    transform: translateY(-2px);
   }
 
   .btn-secondary:active {
-    @apply apple-press;
+    transform: scale(0.98);
   }
 
-  /* Call-to-Action Buttons */
-  .btn-call {
-    @apply inline-flex items-center justify-center px-8 py-4 font-semibold text-white rounded-2xl cursor-pointer min-w-32 relative overflow-hidden;
-    background: linear-gradient(135deg, #10b981, #059669);
-    box-shadow: var(--shadow-apple-md);
-    transition: all 0.3s var(--ease-apple);
-  }
-
-  .btn-call:hover {
-    @apply apple-hover-lift;
-    box-shadow: var(--shadow-apple-lg);
-  }
-
-  .btn-call:active {
-    @apply apple-press;
-  }
-
-  .btn-disconnect {
-    @apply inline-flex items-center justify-center px-8 py-4 font-semibold text-white rounded-2xl cursor-pointer min-w-32;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    box-shadow: var(--shadow-apple-md);
-    transition: all 0.3s var(--ease-apple);
-  }
-
-  .btn-disconnect:hover {
-    @apply apple-hover-lift;
-    box-shadow: var(--shadow-apple-lg);
-  }
-
-  .btn-disconnect:active {
-    @apply apple-press;
-  }
-
-  /* Enhanced Form Styles */
+  /* Enhanced Form Styles - CRITICAL FIX */
   .form {
     @apply flex flex-col gap-6 w-full;
   }
 
   .form .label {
-    @apply text-sm font-medium text-gray-900 dark:text-gray-100 mb-2;
+    @apply text-sm font-medium text-white mb-2;
   }
 
   .form .input {
-    @apply h-12 w-full px-4 py-3 text-sm rounded-xl border transition-all duration-200 apple-glass;
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--glass-border);
+    @apply h-12 w-full px-4 py-3 text-sm rounded-xl border transition-all duration-300;
+    background: var(--glass-input-bg);
+    border-color: var(--glass-input-border);
+    color: white;
     font-size: 16px; /* Prevent iOS zoom */
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+
+  .form .input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
   }
 
   .form .input:focus {
     @apply outline-none;
-    border-color: rgba(59, 130, 246, 0.5);
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--glass-input-focus-bg);
+    border-color: var(--glass-input-focus-border);
     box-shadow: 
       0 0 0 3px rgba(59, 130, 246, 0.1),
       var(--shadow-apple-sm);
     transform: translateY(-1px);
   }
 
-  .form .input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+  .form .input:hover {
+    background: var(--glass-hover-bg);
+    border-color: var(--glass-hover-border);
+  }
+
+  /* Force override any conflicting styles */
+  .form input[type="text"],
+  .form input[type="email"],
+  .form input[type="password"] {
+    background: var(--glass-input-bg) !important;
+    border-color: var(--glass-input-border) !important;
+    color: white !important;
+    backdrop-filter: var(--glass-blur) !important;
+    -webkit-backdrop-filter: var(--glass-blur) !important;
+  }
+
+  .form input[type="text"]:focus,
+  .form input[type="email"]:focus,
+  .form input[type="password"]:focus {
+    background: var(--glass-input-focus-bg) !important;
+    border-color: var(--glass-input-focus-border) !important;
+    box-shadow: 
+      0 0 0 3px rgba(59, 130, 246, 0.1),
+      var(--shadow-apple-sm) !important;
   }
 
   .form .btn {
@@ -389,7 +374,7 @@
     @apply card flex flex-col p-6 relative overflow-hidden gap-10 justify-between backdrop-blur-lg border border-white/20;
 
     .badge-text {
-      @apply text-sm font-semibold capitalize;
+      @apply text-sm font-semibold capitalize text-white;
     }
   }
 
@@ -398,7 +383,7 @@
     @apply flex sm:flex-row flex-col gap-10 items-center justify-between w-full;
 
     h3 {
-      @apply text-center text-gray-900 dark:text-gray-100 mt-5 font-semibold;
+      @apply text-center text-white mt-5 font-semibold;
     }
 
     .card-interviewer {
@@ -421,22 +406,6 @@
 
     .card-content {
       @apply flex flex-col gap-4 justify-center items-center p-8 rounded-3xl min-h-full apple-glass;
-    }
-  }
-
-  /* Enhanced Transcript */
-  .transcript-border {
-    @apply apple-glass p-0.5 rounded-2xl w-full;
-    background: linear-gradient(145deg, 
-      rgba(255, 255, 255, 0.1), 
-      rgba(255, 255, 255, 0.05));
-  }
-
-  .transcript {
-    @apply rounded-2xl min-h-12 px-6 py-4 flex items-center justify-center apple-glass;
-
-    p {
-      @apply text-lg text-center text-gray-900 dark:text-gray-100 font-medium;
     }
   }
 
@@ -473,44 +442,14 @@
     transform: translateY(-2px);
   }
 
-  /* Status Badges */
-  .badge-apple {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm;
-  }
-
-  .badge-apple-success {
-    @apply badge-apple bg-green-500/20 text-green-400 border border-green-500/30;
-  }
-
-  .badge-apple-warning {
-    @apply badge-apple bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
-  }
-
-  .badge-apple-error {
-    @apply badge-apple bg-red-500/20 text-red-400 border border-red-500/30;
-  }
-
-  .badge-apple-info {
-    @apply badge-apple bg-blue-500/20 text-blue-400 border border-blue-500/30;
-  }
-
   /* Layout Components */
   .apple-container {
     @apply relative max-w-7xl mx-auto px-6 py-8;
   }
 
-  .apple-section {
-    @apply relative opacity-0;
-    animation: apple-slide-up 0.8s var(--ease-apple) forwards;
-  }
-
   .apple-cards-grid {
     @apply grid gap-6 auto-rows-fr;
     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  }
-
-  .apple-empty-state {
-    @apply grid-col-full max-w-md mx-auto text-center;
   }
 }
 
@@ -581,19 +520,38 @@
   }
 }
 
-@keyframes apple-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
-@keyframes apple-breathe {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.8;
+@keyframes scale-in {
+  0% { transform: scale(0) rotate(180deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes slide-down {
+  0% { 
+    opacity: 0; 
+    transform: translateY(-8px); 
+    max-height: 0;
   }
-  50% {
-    transform: scale(1.02);
-    opacity: 1;
+  100% { 
+    opacity: 1; 
+    transform: translateY(0); 
+    max-height: 100px;
+  }
+}
+
+@keyframes fade-in {
+  0% { 
+    opacity: 0; 
+    transform: translateY(4px) scale(0.95); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
   }
 }
 
@@ -613,231 +571,17 @@
 .animate-apple-pulse { 
   animation: apple-pulse 3s ease-in-out infinite; 
 }
-.animate-apple-breathe { 
-  animation: apple-breathe 4s ease-in-out infinite; 
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
 }
-
-/* ==========================================================================
-   BACKGROUND PATTERNS & EFFECTS
-   ========================================================================== */
-
-.bg-apple-pattern {
-  background-image: 
-    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
-  background-attachment: fixed;
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
 }
-
-.bg-apple-grid {
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 60px 60px;
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
 }
-
-.bg-noise {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-}
-
-/* ==========================================================================
-   RESPONSIVE DESIGN & MOBILE OPTIMIZATION
-   ========================================================================== */
-
-@media (max-width: 1024px) {
-  .apple-container {
-    @apply px-4 py-6;
-  }
-  
-  .call-view {
-    @apply flex-col gap-6;
-  }
-  
-  .apple-cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    @apply gap-4;
-  }
-}
-
-@media (max-width: 768px) {
-  .apple-container {
-    @apply px-3 py-4;
-  }
-  
-  h1 { @apply text-2xl; }
-  h2 { @apply text-xl; }
-  h3 { @apply text-lg; }
-  
-  .card {
-    @apply p-4;
-  }
-  
-  .btn-primary,
-  .btn-secondary {
-    @apply px-4 py-2 text-sm min-h-10;
-  }
-
-  .apple-cards-grid {
-    grid-template-columns: 1fr;
-    @apply gap-3;
-  }
-
-  .form .input {
-    @apply h-12 text-base; /* Prevent iOS zoom */
-  }
-}
-
-@media (max-width: 640px) {
-  .apple-navbar {
-    @apply h-14;
-  }
-  
-  .card-interview {
-    @apply min-h-80 p-4;
-  }
-  
-  .form {
-    @apply gap-4;
-  }
-}
-
-/* ==========================================================================
-   ACCESSIBILITY & PERFORMANCE OPTIMIZATIONS
-   ========================================================================== */
-
-/* Enhanced Focus States */
-.focus-apple:focus-visible,
-.btn-primary:focus-visible,
-.btn-secondary:focus-visible,
-.form .input:focus-visible {
-  outline: 2px solid rgba(59, 130, 246, 0.8);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-
-/* Loading States */
-.loading-apple {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.loading-apple::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: inherit;
-}
-
-/* High Contrast Mode Support */
-@media (prefers-contrast: high) {
-  .apple-glass {
-    border-color: rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .btn-primary {
-    border: 2px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .form .input {
-    border-color: rgba(255, 255, 255, 0.3);
-  }
-}
-
-/* Reduced Motion Support */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  
-  .animate-apple-fade,
-  .animate-apple-slide,
-  .animate-apple-zoom,
-  .animate-apple-float,
-  .animate-apple-pulse,
-  .animate-apple-breathe {
-    animation: none;
-    opacity: 1;
-  }
-}
-
-/* Enhanced Scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Dark mode scrollbar improvements */
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-/* Color Scheme Utilities for V4 */
-.color-scheme-light {
-  color-scheme: light;
-}
-
-.color-scheme-dark {
-  color-scheme: dark;
-}
-
-.color-scheme-auto {
-  color-scheme: light dark;
-}
-
-/* ==========================================================================
-   SAFE AREA SUPPORT (iOS & MODERN DEVICES)
-   ========================================================================== */
-
-@supports (padding: env(safe-area-inset-top)) {
-  .safe-area-top {
-    padding-top: env(safe-area-inset-top);
-  }
-  
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  
-  .safe-area-left {
-    padding-left: env(safe-area-inset-left);
-  }
-  
-  .safe-area-right {
-    padding-right: env(safe-area-inset-right);
-  }
-
-  .h-safe-top {
-    height: env(safe-area-inset-top);
-  }
-
-  .pb-safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
 }
 
 /* ==========================================================================
@@ -858,18 +602,6 @@
 /* Home Page Layouts */
 .apple-home-container {
   @apply relative flex flex-col gap-12 pb-8;
-}
-
-.apple-hero-section {
-  @apply relative;
-}
-
-.apple-section {
-  @apply relative;
-}
-
-.apple-section-header {
-  @apply mb-8;
 }
 
 /* Interview Page Layouts */
@@ -941,44 +673,54 @@
   @apply relative z-10 max-w-5xl mx-auto px-6 py-8;
 }
 
-/* Background Elements */
-.apple-bg-elements {
-  @apply fixed inset-0 pointer-events-none z-0;
-}
-
 /* Tech Stack Display */
 .tech-tooltip {
   @apply absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-20;
 }
 
-/* Interview Status Indicators */
-.interview-status-ready {
-  @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+/* ==========================================================================
+   SPECIFIC FIXES FOR AUTH FORMS
+   ========================================================================== */
+
+/* Force proper styling for authentication form inputs */
+input[type="text"],
+input[type="email"], 
+input[type="password"] {
+  background: var(--glass-input-bg) !important;
+  border: 1px solid var(--glass-input-border) !important;
+  color: white !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
 }
 
-.interview-status-completed {
-  @apply bg-green-500/20 text-green-400 border-green-500/30;
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+  background: var(--glass-input-focus-bg) !important;
+  border-color: var(--glass-input-focus-border) !important;
+  outline: none !important;
+  box-shadow: 
+    0 0 0 3px rgba(59, 130, 246, 0.1),
+    var(--shadow-apple-sm) !important;
 }
 
-.interview-status-in-progress {
-  @apply bg-yellow-500/20 text-yellow-400 border-yellow-500/30;
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
 }
 
-/* Performance Metrics Display */
-.performance-excellent {
-  @apply text-emerald-400 bg-emerald-500/20;
+/* Additional overrides for shadcn/ui components */
+.bg-background {
+  background: hsl(var(--background)) !important;
 }
 
-.performance-good {
-  @apply text-green-400 bg-green-500/20;
+.text-foreground {
+  color: hsl(var(--foreground)) !important;
 }
 
-.performance-fair {
-  @apply text-blue-400 bg-blue-500/20;
-}
-
-.performance-needs-improvement {
-  @apply text-orange-400 bg-orange-500/20;
+.bg-input {
+  background: var(--glass-input-bg) !important;
 }
 
 /* ==========================================================================
@@ -1000,23 +742,309 @@
   text-wrap: balance;
 }
 
-.text-pretty {
-  text-wrap: pretty;
-}
+/* ==========================================================================
+   RESPONSIVE DESIGN & MOBILE OPTIMIZATION
+   ========================================================================== */
 
-/* Container queries support */
-@container (min-width: 640px) {
-  .container-sm\:text-lg {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
+@media (max-width: 768px) {
+  .apple-container {
+    @apply px-3 py-4;
+  }
+  
+  h1 { @apply text-2xl; }
+  h2 { @apply text-xl; }
+  h3 { @apply text-lg; }
+  
+  .card {
+    @apply p-4;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    @apply px-4 py-2 text-sm min-h-10;
+  }
+
+  .form .input {
+    @apply h-12 text-base; /* Prevent iOS zoom */
   }
 }
 
-@container (min-width: 768px) {
-  .container-md\:text-xl {
-    font-size: 1.25rem;
-    line-height: 1.75rem;
+@media (max-width: 640px) {
+  .apple-navbar {
+    @apply h-14;
   }
+  
+  .card-interview {
+    @apply min-h-80 p-4;
+  }
+  
+  .form {
+    @apply gap-4;
+  }
+}
+
+/* ==========================================================================
+   ACCESSIBILITY & PERFORMANCE OPTIMIZATIONS
+   ========================================================================== */
+
+/* Enhanced Focus States */
+.focus-apple:focus-visible,
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.form .input:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-apple-fade,
+  .animate-apple-slide,
+  .animate-apple-zoom,
+  .animate-apple-float,
+  .animate-apple-pulse {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Enhanced Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Dark mode scrollbar improvements */
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ==========================================================================
+   BACKGROUND PATTERNS & EFFECTS
+   ========================================================================== */
+
+.bg-apple-pattern {
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+.bg-apple-grid {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* ==========================================================================
+   ENHANCED FORM COMPONENT INTEGRATION
+   ========================================================================== */
+
+/* Shadcn/ui Input component overrides */
+.ui-input {
+  @apply h-12 w-full px-4 py-3 text-sm rounded-xl border transition-all duration-300;
+  background: var(--glass-input-bg) !important;
+  border-color: var(--glass-input-border) !important;
+  color: white !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+}
+
+.ui-input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.ui-input:focus {
+  background: var(--glass-input-focus-bg) !important;
+  border-color: var(--glass-input-focus-border) !important;
+  outline: none !important;
+  box-shadow: 
+    0 0 0 3px rgba(59, 130, 246, 0.1),
+    var(--shadow-apple-sm) !important;
+  transform: translateY(-1px);
+}
+
+/* Form field wrapper styles */
+.form-field-wrapper {
+  @apply space-y-2;
+}
+
+.form-field-wrapper .form-label {
+  @apply text-sm font-medium text-white;
+}
+
+.form-field-wrapper .form-control {
+  @apply relative;
+}
+
+.form-field-wrapper .form-message {
+  @apply text-sm text-red-400;
+}
+
+/* Button component overrides */
+.ui-button {
+  @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-xl min-h-12 cursor-pointer relative overflow-hidden transition-all duration-300;
+}
+
+.ui-button-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+  color: white;
+  box-shadow: var(--shadow-apple-md);
+}
+
+.ui-button-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-apple-lg);
+}
+
+.ui-button-secondary {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.ui-button-secondary:hover {
+  background: var(--glass-hover-bg);
+  border-color: var(--glass-hover-border);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   TOAST/NOTIFICATION STYLES
+   ========================================================================== */
+
+.toaster-enhanced [data-sonner-toast] {
+  animation-duration: 0.4s;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  color: white !important;
+}
+
+.toaster-interview [data-sonner-toast] {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+
+/* ==========================================================================
+   ERROR STATES & FEEDBACK
+   ========================================================================== */
+
+.error-state {
+  @apply p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.success-state {
+  @apply p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.warning-state {
+  @apply p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.info-state {
+  @apply p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Form validation states */
+.form .input.error,
+.ui-input.error {
+  @apply border-red-500/50;
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.form .input.success,
+.ui-input.success {
+  @apply border-green-500/50;
+  background: rgba(34, 197, 94, 0.05) !important;
+}
+
+.form .input.warning,
+.ui-input.warning {
+  @apply border-yellow-500/50;
+  background: rgba(245, 158, 11, 0.05) !important;
+}
+
+/* ==========================================================================
+   PERFORMANCE OPTIMIZATIONS
+   ========================================================================== */
+
+/* GPU acceleration for key elements */
+.apple-glass,
+.btn-primary,
+.btn-secondary,
+.apple-navbar,
+.card-interview,
+.form .input,
+.ui-input {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Content visibility optimizations */
+.apple-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* Intersection observer ready classes */
+.intersection-fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s var(--ease-apple), transform 0.6s var(--ease-apple);
+}
+
+.intersection-fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ==========================================================================
@@ -1069,101 +1097,6 @@
 }
 
 /* ==========================================================================
-   TAILWIND V4 THEME INTEGRATION
-   ========================================================================== */
-
-@theme inline {
-  /* Core radius values */
-  --radius-xs: calc(var(--radius) - 6px);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-
-  /* Enhanced color system */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-constructive: var(--constructive);
-  --color-warning: var(--warning);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-
-  /* Interview app specific colors */
-  --color-interview-primary: #3b82f6;
-  --color-interview-secondary: #8b5cf6;
-  --color-interview-accent: #06b6d4;
-  --color-success: #10b981;
-  --color-error: #ef4444;
-  --color-warning: #f59e0b;
-
-  /* Glass effect tokens */
-  --color-glass-bg: var(--glass-bg);
-  --color-glass-border: var(--glass-border);
-  --blur-glass: var(--glass-blur);
-
-  /* Apple system tokens */
-  --shadow-apple: var(--shadow-apple-premium);
-  --ease-apple: var(--ease-apple);
-
-  /* Spacing scale adjustments */
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 1rem;
-  --space-lg: 1.5rem;
-  --space-xl: 2rem;
-  --space-2xl: 3rem;
-  --space-3xl: 4rem;
-
-  /* Typography scale */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
-  --font-size-5xl: 3rem;
-
-  /* Line height scale */
-  --line-height-xs: 1;
-  --line-height-sm: 1.25;
-  --line-height-base: 1.5;
-  --line-height-lg: 1.75;
-  --line-height-xl: 2;
-
-  /* Animation durations */
-  --duration-fast: 150ms;
-  --duration-normal: 300ms;
-  --duration-slow: 500ms;
-  --duration-slower: 750ms;
-
-  /* Z-index scale */
-  --z-dropdown: 1000;
-  --z-sticky: 1020;
-  --z-fixed: 1030;
-  --z-modal: 1040;
-  --z-popover: 1050;
-  --z-tooltip: 1060;
-}
-
-/* ==========================================================================
    BROWSER SPECIFIC OPTIMIZATIONS
    ========================================================================== */
 
@@ -1176,12 +1109,22 @@
   .apple-navbar {
     -webkit-backdrop-filter: var(--glass-blur);
   }
+  
+  .form .input,
+  .ui-input {
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
 }
 
 /* Firefox specific optimizations */
 @-moz-document url-prefix() {
   .apple-glass {
     background: rgba(255, 255, 255, 0.06);
+  }
+  
+  .form .input,
+  .ui-input {
+    background: rgba(255, 255, 255, 0.06) !important;
   }
 }
 
@@ -1193,69 +1136,55 @@
 }
 
 /* ==========================================================================
-   PERFORMANCE OPTIMIZATIONS
+   FINAL OVERRIDES & CRITICAL FIXES
    ========================================================================== */
 
-/* GPU acceleration for key elements */
-.apple-glass,
-.btn-primary,
-.btn-secondary,
-.apple-navbar,
-.card-interview {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
+/* Critical overrides to ensure dark theme styling works */
+* {
+  box-sizing: border-box;
 }
 
-/* Content visibility optimizations */
-.apple-section {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 500px;
+body, html {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
-/* Intersection observer ready classes */
-.intersection-fade-in {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s var(--ease-apple), transform 0.6s var(--ease-apple);
+/* Ensure all form elements follow the dark theme */
+input, textarea, select {
+  background: var(--glass-input-bg) !important;
+  border: 1px solid var(--glass-input-border) !important;
+  color: white !important;
 }
 
-.intersection-fade-in.visible {
-  opacity: 1;
-  transform: translateY(0);
+input:focus, textarea:focus, select:focus {
+  background: var(--glass-input-focus-bg) !important;
+  border-color: var(--glass-input-focus-border) !important;
 }
 
-/* ==========================================================================
-   ERROR STATES & FEEDBACK
-   ========================================================================== */
-
-.error-state {
-  @apply p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400;
+/* Override any conflicting Tailwind utilities */
+.bg-white {
+  background-color: var(--glass-input-bg) !important;
 }
 
-.success-state {
-  @apply p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400;
+.text-black {
+  color: white !important;
 }
 
-.warning-state {
-  @apply p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400;
+.border-gray-300 {
+  border-color: var(--glass-input-border) !important;
 }
 
-.info-state {
-  @apply p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400;
+/* Ensure proper text contrast */
+.text-gray-900 {
+  color: white !important;
 }
 
-/* Form validation states */
-.form .input.error {
-  @apply border-red-500/50 bg-red-500/5;
+.text-gray-600 {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
-.form .input.success {
-  @apply border-green-500/50 bg-green-500/5;
-}
-
-.form .input.warning {
-  @apply border-yellow-500/50 bg-yellow-500/5;
+.text-gray-500 {
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 
 /* ==========================================================================
@@ -1281,154 +1210,191 @@
   --color-interview-accent: #047857;
 }
 
-/* ==========================================================================
-   FINAL OPTIMIZATIONS
-   ========================================================================== */
+/* * ==========================================================================
+   AUTH FORM SPECIFIC FIXES - Add these to your globals.css
+   ========================================================================== */ 
 
-/* Ensure proper stacking contexts */
-.apple-navbar { z-index: var(--z-fixed); }
-.apple-glass { position: relative; z-index: 1; }
-.modal { z-index: var(--z-modal); }
-.tooltip { z-index: var(--z-tooltip); }
-
-/* Smooth scrolling improvements */
-html {
-  scroll-padding-top: 4rem; /* Account for fixed navbar */
+/* Force proper glassmorphism styling for all form inputs */
+.form .input,
+.form input[type="text"],
+.form input[type="email"],
+.form input[type="password"],
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  background: var(--glass-input-bg) !important;
+  border: 1px solid var(--glass-input-border) !important;
+  color: white !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border-radius: 0.75rem !important;
+  height: 3rem !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 16px !important; /* Prevent iOS zoom */
+  transition: all 0.3s var(--ease-apple) !important;
 }
 
-/* Enhanced touch targets for mobile */
-@media (hover: none) and (pointer: coarse) {
-  .btn-primary,
-  .btn-secondary,
-  .apple-nav-item,
-  button {
-    min-height: 44px;
-    min-width: 44px;
-  }
+/* Focus states for form inputs */
+.form .input:focus,
+.form input[type="text"]:focus,
+.form input[type="email"]:focus,
+.form input[type="password"]:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+  background: var(--glass-input-focus-bg) !important;
+  border-color: var(--glass-input-focus-border) !important;
+  outline: none !important;
+  box-shadow: 
+    0 0 0 3px rgba(59, 130, 246, 0.1),
+    var(--shadow-apple-sm) !important;
+  transform: translateY(-1px) !important;
 }
 
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
+/* Placeholder styling */
+.form .input::placeholder,
+.form input[type="text"]::placeholder,
+.form input[type="email"]::placeholder,
+.form input[type="password"]::placeholder,
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
 }
 
-@keyframes scale-in {
-  0% { transform: scale(0) rotate(180deg); opacity: 0; }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+/* Hover states */
+.form .input:hover,
+.form input[type="text"]:hover,
+.form input[type="email"]:hover,
+.form input[type="password"]:hover,
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="password"]:hover {
+  background: var(--glass-hover-bg) !important;
+  border-color: var(--glass-hover-border) !important;
 }
 
-@keyframes slide-down {
-  0% { 
-    opacity: 0; 
-    transform: translateY(-8px); 
-    max-height: 0;
-  }
-  100% { 
-    opacity: 1; 
-    transform: translateY(0); 
-    max-height: 100px;
-  }
+/* Form labels */
+.form .label,
+.form label {
+  color: white !important;
+  font-weight: 500 !important;
+  margin-bottom: 0.5rem !important;
+  font-size: 0.875rem !important;
 }
 
-.animate-shake {
-  animation: shake 0.4s ease-in-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.3s ease-out;
-}
-
-.animate-slide-down {
-  animation: slide-down 0.3s ease-out;
-}
-
-@keyframes fade-in {
-  0% { 
-    opacity: 0; 
-    transform: translateY(4px) scale(0.95); 
-  }
-  100% { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out forwards;
-}
-
-@keyframes label-glow {
-  0%, 100% { 
-    text-shadow: 0 0 0 transparent; 
-  }
-  50% { 
-    text-shadow: 0 0 8px rgba(59, 130, 246, 0.3); 
-  }
-}
-
-.animate-label-glow {
-  animation: label-glow 2s ease-in-out infinite;
-}
-
-@keyframes toast-slide-in-right {
-  from {
-    transform: translateX(100%) scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0) scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes toast-slide-in-left {
-  from {
-    transform: translateX(-100%) scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0) scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes toast-slide-in-top {
-  from {
-    transform: translateY(-100%) scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes toast-slide-in-bottom {
-  from {
-    transform: translateY(100%) scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-.toaster-enhanced [data-sonner-toast] {
-  animation-duration: 0.4s;
-  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.toaster-enhanced [data-sonner-toast][data-styled] {
-  background: transparent !important;
+/* Button styling to match the theme */
+.form .btn,
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%) !important;
   border: none !important;
-  box-shadow: none !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 0.75rem !important;
+  height: 3rem !important;
+  transition: all 0.3s var(--ease-apple) !important;
+  box-shadow: var(--shadow-apple-md) !important;
 }
 
-.toaster-interview [data-sonner-toast] {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)) !important;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+.form .btn:hover,
+.btn-primary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-apple-lg) !important;
+}
+
+/* Override any conflicting Tailwind or component library styles */
+.apple-glass input,
+.apple-glass .input {
+  background: var(--glass-input-bg) !important;
+  border-color: var(--glass-input-border) !important;
+  color: white !important;
+}
+
+.apple-glass input:focus,
+.apple-glass .input:focus {
+  background: var(--glass-input-focus-bg) !important;
+  border-color: var(--glass-input-focus-border) !important;
+}
+
+/* Ensure proper text color for all text elements inside glass containers */
+.apple-glass h1,
+.apple-glass h2,
+.apple-glass h3,
+.apple-glass h4,
+.apple-glass h5,
+.apple-glass h6,
+.apple-glass p,
+.apple-glass span,
+.apple-glass label {
+  color: white !important;
+}
+
+/* Links inside glass containers */
+.apple-glass a {
+  color: #60a5fa !important; /* light blue */
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.apple-glass a:hover {
+  color: #93c5fd !important; /* lighter blue */
+}
+
+/* Form validation states */
+.form .input.error,
+input.error {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.form .input.success,
+input.success {
+  border-color: rgba(34, 197, 94, 0.5) !important;
+  background: rgba(34, 197, 94, 0.05) !important;
+}
+
+/* Ensure proper spacing and layout */
+.form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+  width: 100% !important;
+}
+
+/* Remove any default browser styling */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Fix for mobile Safari */
+@media screen and (max-width: 768px) {
+  .form .input,
+  .form input[type="text"],
+  .form input[type="email"],
+  .form input[type="password"],
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    -webkit-text-size-adjust: 100% !important;
+  }
+}
+
+/* Dark mode enforcement */
+@media (prefers-color-scheme: dark) {
+  .form .input,
+  .form input[type="text"],
+  .form input[type="email"],
+  .form input[type="password"],
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    background: var(--glass-input-bg) !important;
+    border-color: var(--glass-input-border) !important;
+    color: white !important;
+  }
 }

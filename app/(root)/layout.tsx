@@ -1,3 +1,4 @@
+// app/(root)/layout.tsx
 import Link from "next/link";
 import Image from "next/image";
 import { ReactNode } from "react";
@@ -7,7 +8,14 @@ import { isAuthenticated } from "@/lib/actions/auth.action";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const isUserAuthenticated = await isAuthenticated();
-  if (!isUserAuthenticated) redirect("/sign-in");
+  
+  // Only redirect if user is NOT authenticated
+  if (!isUserAuthenticated) {
+    console.log("🔥 RootLayout: User not authenticated, redirecting to sign-in");
+    redirect("/sign-in");
+  }
+
+  console.log("🔥 RootLayout: User authenticated, rendering protected layout");
 
   return (
     <div className="apple-root-layout">
@@ -20,7 +28,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-105">
                 <Image 
                   src="/logo.svg" 
-                  alt="PrepWise Logo" 
+                  alt="TheTruthSchool Logo" 
                   width={24} 
                   height={20}
                   className="filter brightness-0 invert"
@@ -31,7 +39,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
             </div>
             <div className="brand-text">
               <h2 className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-blue-200 group-hover:to-purple-200 transition-all duration-300">
-                PrepWise
+              TheTruthSchool
               </h2>
               <p className="text-xs text-white/50 font-medium hidden sm:block">AI Interview Prep</p>
             </div>
@@ -39,7 +47,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
 
           {/* Navigation Menu */}
           <div className="apple-nav-menu">
-            <Link href="/" className="apple-nav-item group">
+            <Link href="/dashboard" className="apple-nav-item group">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>

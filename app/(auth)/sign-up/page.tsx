@@ -1,10 +1,11 @@
+// app/(auth)/sign-up/page.tsx
 import AuthForm from "@/components/AuthForm";
 
-const Page = () => {
+const SignUpPage = () => {
   return (
-    <div className="apple-signup-container">
-      {/* Header section with branding */}
-      <div className="mb-8 text-center animate-apple-slide">
+    <>
+      {/* Header section with branding - Outside the glass container */}
+      <div className="mb-6 text-center">
         <div className="inline-flex items-center gap-3 mb-4">
           <div className="relative">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
@@ -34,23 +35,15 @@ const Page = () => {
           Create Your Account
         </h2>
         <p className="text-white/60 max-w-sm mx-auto leading-relaxed">
-          Join our platfrom where professionals mastering their interview skills with AI-powered practice
+          Join our platform where professionals master their interview skills with AI-powered practice
         </p>
       </div>
 
-      {/* Auth Form with enhanced wrapper */}
-      <div className="relative">
-        {/* Subtle background glow */}
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-3xl blur-3xl -z-10 scale-110" />
-        
-        {/* Main form container */}
-        <div className="relative animate-apple-zoom">
-          <AuthForm type="sign-up" />
-        </div>
-      </div>
+      {/* Auth Form - This will be inside the glass container from AuthLayout */}
+      <AuthForm type="sign-up" />
 
-      {/* Footer section */}
-      <div className="mt-8 text-center space-y-4 animate-apple-slide" style={{ animationDelay: "0.2s" }}>
+      {/* Footer section - Outside the glass container */}
+      <div className="mt-6 text-center space-y-3">
         {/* Features highlight */}
         <div className="flex items-center justify-center gap-6 text-sm text-white/50">
           <div className="flex items-center gap-2">
@@ -79,12 +72,8 @@ const Page = () => {
           Your data is encrypted and secure.
         </p>
       </div>
-
-      {/* Decorative elements */}
-      <div className="absolute top-10 right-10 w-20 h-20 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full blur-xl" />
-      <div className="absolute bottom-10 left-10 w-16 h-16 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-xl" />
-    </div>
+    </>
   );
 };
 
-export default Page;
+export default SignUpPage;
