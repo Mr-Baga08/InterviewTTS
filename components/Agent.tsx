@@ -1,4 +1,4 @@
-// components/Agent.tsx - Updated for type-safe VAPI SDK
+// components/Agent.tsx - FIXED VERSION with proper TypeScript types
 "use client";
 
 import Image from "next/image";
@@ -10,22 +10,26 @@ import { vapi, vapiUtils, setupVapiEventHandlers } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
 
-// Define all necessary types locally
-enum CallStatus {
-  INACTIVE = "INACTIVE",
-  CONNECTING = "CONNECTING", 
-  ACTIVE = "ACTIVE",
-  PAUSED = "PAUSED",
-  RECONNECTING = "RECONNECTING",
-  FINISHED = "FINISHED",
-  ERROR = "ERROR",
-}
+// Define all necessary types locally - using const assertion for better type inference
+const CallStatus = {
+  INACTIVE: "INACTIVE",
+  CONNECTING: "CONNECTING", 
+  ACTIVE: "ACTIVE",
+  PAUSED: "PAUSED",
+  RECONNECTING: "RECONNECTING",
+  FINISHED: "FINISHED",
+  ERROR: "ERROR",
+} as const;
 
-enum MessageRoleEnum {
-  USER = "user",
-  SYSTEM = "system",
-  ASSISTANT = "assistant",
-}
+type CallStatus = typeof CallStatus[keyof typeof CallStatus];
+
+const MessageRoleEnum = {
+  USER: "user",
+  SYSTEM: "system",
+  ASSISTANT: "assistant",
+} as const;
+
+type MessageRoleEnum = typeof MessageRoleEnum[keyof typeof MessageRoleEnum];
 
 // Helper function to convert MessageRoleEnum to string
 const convertRoleToString = (role: MessageRoleEnum): "user" | "system" | "assistant" => {
@@ -76,7 +80,7 @@ const Agent = ({
 
   useEffect(() => {
     // Check if VAPI is ready
-    if (!vapiUtils.isReady()) {
+    if (!vapiUtils.isReady() || !vapi) {
       setError("VAPI not initialized. Please check your token configuration.");
       setCallStatus(CallStatus.ERROR);
       return;
@@ -130,24 +134,25 @@ const Agent = ({
       }
     };
 
-    // Setup event handlers if VAPI is available
-    if (vapi) {
-      vapi.on("call-start", onCallStart);
-      vapi.on("call-end", onCallEnd);
-      vapi.on("message", onMessage);
-      vapi.on("speech-start", onSpeechStart);
-      vapi.on("speech-end", onSpeechEnd);
-      vapi.on("error", onError);
+    // Setup event handlers - VAPI is guaranteed to be non-null here
+    vapi.on("call-start", onCallStart);
+    vapi.on("call-end", onCallEnd);
+    vapi.on("message", onMessage);
+    vapi.on("speech-start", onSpeechStart);
+    vapi.on("speech-end", onSpeechEnd);
+    vapi.on("error", onError);
 
-      return () => {
+    return () => {
+      // Cleanup - check if vapi is still available
+      if (vapi) {
         vapi.off("call-start", onCallStart);
         vapi.off("call-end", onCallEnd);
         vapi.off("message", onMessage);
         vapi.off("speech-start", onSpeechStart);
         vapi.off("speech-end", onSpeechEnd);
         vapi.off("error", onError);
-      };
-    }
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -160,7 +165,7 @@ const Agent = ({
 
       if (!interviewId || !userId) {
         console.error("Missing interviewId or userId for feedback generation");
-        router.push("/");
+        router.push("/dashboard");
         return;
       }
 
@@ -177,17 +182,17 @@ const Agent = ({
           router.push(`/interview/${interviewId}/feedback`);
         } else {
           console.error("❌ Error saving feedback:", result.message);
-          router.push("/");
+          router.push("/dashboard");
         }
       } catch (error) {
         console.error("❌ Error generating feedback:", error);
-        router.push("/");
+        router.push("/dashboard");
       }
     };
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        router.push("/");
+        router.push("/dashboard");
       } else {
         handleGenerateFeedback(messages);
       }
@@ -195,7 +200,7 @@ const Agent = ({
   }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
 
   const handleCall = async () => {
-    if (!vapiUtils.isReady()) {
+    if (!vapiUtils.isReady() || !vapi) {
       setError("VAPI not initialized. Please check your token configuration.");
       return;
     }
@@ -250,8 +255,27 @@ const Agent = ({
     }
   };
 
+  // Helper function to check if call can be started
+  const canStartCall = (): boolean => {
+    return (
+      vapiUtils.isReady() && 
+      vapi !== null && 
+      (callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED)
+    );
+  };
+
+  // Helper function to check if call is active
+  const isCallActive = (): boolean => {
+    return callStatus === CallStatus.ACTIVE;
+  };
+
+  // Helper function to check if there's an error state
+  const hasError = (): boolean => {
+    return callStatus === CallStatus.ERROR;
+  };
+
   // Show error state if VAPI is not ready
-  if (!vapiUtils.isReady() || callStatus === CallStatus.ERROR) {
+  if (!vapiUtils.isReady() || !vapi || hasError()) {
     return (
       <div className="call-view">
         <div className="card-border">
@@ -313,7 +337,7 @@ const Agent = ({
       </div>
 
       {/* Error Display */}
-      {error && callStatus !== CallStatus.ERROR && (
+      {error && !hasError() && (
         <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
           <div className="flex items-center gap-2 text-red-400">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,11 +367,11 @@ const Agent = ({
 
       {/* Call Controls */}
       <div className="w-full flex justify-center">
-        {callStatus !== CallStatus.ACTIVE ? (
+        {!isCallActive() ? (
           <button 
             className="relative btn-call" 
             onClick={handleCall}
-            disabled={callStatus === CallStatus.CONNECTING || !vapiUtils.isReady()}
+            disabled={!canStartCall()}
           >
             <span
               className={cn(
