@@ -1,11 +1,20 @@
-// components/LiveKitVoiceAgent.tsx (Updated)
+// components/LiveKitVoiceAgent.tsx - Fixed API Usage
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { Room, RoomEvent, RemoteAudioTrack, LocalAudioTrack } from 'livekit-client';
 import { cn } from '@/lib/utils';
+import { 
+  Room, 
+  RoomEvent, 
+  RemoteAudioTrack, 
+  LocalAudioTrack,
+  Track,
+  TrackPublication,
+  Participant,
+  ConnectionState,
+  DisconnectReason
+} from 'livekit-client';
 
 interface LiveKitVoiceAgentProps {
   userName: string;
@@ -32,10 +41,12 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
   const [room] = useState(() => new Room());
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.Disconnected);
   const [error, setError] = useState<string | null>(null);
   const [agentSpeaking, setAgentSpeaking] = useState(false);
   const [userSpeaking, setUserSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<string>('');
+  const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | null>(null);
 
   // Setup room events
   useEffect(() => {
@@ -44,44 +55,78 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
+      setConnectionState(ConnectionState.Connected);
     };
 
-    const handleDisconnected = () => {
-      console.log('❌ Disconnected from room');
+    const handleDisconnected = (reason?: DisconnectReason) => {
+      console.log('❌ Disconnected from room:', reason);
       setIsConnected(false);
       setIsConnecting(false);
+      setConnectionState(ConnectionState.Disconnected);
     };
 
     const handleReconnecting = () => {
       console.log('🔄 Reconnecting to room');
       setIsConnecting(true);
+      setConnectionState(ConnectionState.Reconnecting);
     };
 
     const handleReconnected = () => {
       console.log('✅ Reconnected to room');
       setIsConnecting(false);
+      setConnectionState(ConnectionState.Connected);
     };
 
-    const handleTrackSubscribed = (track: any, publication: any, participant: any) => {
-      if (track instanceof RemoteAudioTrack && participant.identity === 'interview-agent') {
+    const handleConnectionStateChanged = (state: ConnectionState) => {
+      console.log('📶 Connection state changed:', state);
+      setConnectionState(state);
+      setIsConnecting(state === ConnectionState.Connecting || state === ConnectionState.Reconnecting);
+      setIsConnected(state === ConnectionState.Connected);
+    };
+
+    const handleTrackSubscribed = (
+      track: RemoteAudioTrack, 
+      publication: TrackPublication, 
+      participant: Participant
+    ) => {
+      console.log('🤖 Remote track subscribed:', track.kind, participant.identity);
+      
+      if (track.kind === Track.Kind.Audio && participant.identity === 'interview-agent') {
         console.log('🤖 Agent audio track subscribed');
         setAgentSpeaking(true);
         
-        // Auto-play agent audio
-        track.attach();
+        // Attach audio track to play agent's voice
+        const audioElement = track.attach() as HTMLAudioElement;
+        audioElement.autoplay = true;
+        
+        // Monitor audio for speaking detection
+        track.on('muted', () => setAgentSpeaking(false));
+        track.on('unmuted', () => setAgentSpeaking(true));
       }
     };
 
-    const handleTrackUnsubscribed = (track: any, publication: any, participant: any) => {
-      if (track instanceof RemoteAudioTrack && participant.identity === 'interview-agent') {
+    const handleTrackUnsubscribed = (
+      track: RemoteAudioTrack,
+      publication: TrackPublication,
+      participant: Participant
+    ) => {
+      if (track.kind === Track.Kind.Audio && participant.identity === 'interview-agent') {
+        console.log('🤖 Agent audio track unsubscribed');
         setAgentSpeaking(false);
+        track.detach();
       }
     };
 
-    const handleDataReceived = (payload: Uint8Array, participant: any) => {
+    const handleDataReceived = (
+      payload: Uint8Array,
+      participant?: Participant,
+      kind?: any
+    ) => {
       if (participant?.identity === 'interview-agent') {
         try {
           const message = JSON.parse(new TextDecoder().decode(payload));
+          console.log('📨 Received data from agent:', message);
+          
           if (message.type === 'transcript') {
             setTranscript(message.text);
           }
@@ -91,25 +136,99 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
       }
     };
 
-    // Add event listeners
+    const handleParticipantConnected = (participant: Participant) => {
+      console.log('👤 Participant connected:', participant.identity);
+    };
+
+    const handleParticipantDisconnected = (participant: Participant) => {
+      console.log('👤 Participant disconnected:', participant.identity);
+    };
+
+    // Add event listeners with proper types
     room.on(RoomEvent.Connected, handleConnected);
     room.on(RoomEvent.Disconnected, handleDisconnected);
     room.on(RoomEvent.Reconnecting, handleReconnecting);
     room.on(RoomEvent.Reconnected, handleReconnected);
+    room.on(RoomEvent.ConnectionStateChanged, handleConnectionStateChanged);
     room.on(RoomEvent.TrackSubscribed, handleTrackSubscribed);
     room.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
     room.on(RoomEvent.DataReceived, handleDataReceived);
+    room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
+    room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
 
     return () => {
+      // Cleanup event listeners
       room.off(RoomEvent.Connected, handleConnected);
       room.off(RoomEvent.Disconnected, handleDisconnected);
       room.off(RoomEvent.Reconnecting, handleReconnecting);
       room.off(RoomEvent.Reconnected, handleReconnected);
+      room.off(RoomEvent.ConnectionStateChanged, handleConnectionStateChanged);
       room.off(RoomEvent.TrackSubscribed, handleTrackSubscribed);
       room.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
       room.off(RoomEvent.DataReceived, handleDataReceived);
+      room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
+      room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
     };
   }, [room]);
+
+  // Monitor local audio for user speaking detection
+  useEffect(() => {
+    if (!localAudioTrack) return;
+
+    let audioContext: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let animationFrame: number;
+
+    const setupAudioAnalysis = async () => {
+      try {
+        audioContext = new AudioContext();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+
+        // Get the MediaStreamTrack from the LocalAudioTrack
+        const mediaStream = new MediaStream([localAudioTrack.mediaStreamTrack]);
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const checkAudioLevel = () => {
+          if (!analyser) return;
+          
+          analyser.getByteFrequencyData(dataArray);
+          
+          // Calculate RMS
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i] * dataArray[i];
+          }
+          const rms = Math.sqrt(sum / dataArray.length);
+          const volume = rms / 255;
+
+          // Update speaking state based on volume threshold
+          setUserSpeaking(volume > 0.01);
+
+          animationFrame = requestAnimationFrame(checkAudioLevel);
+        };
+
+        checkAudioLevel();
+      } catch (error) {
+        console.error('Failed to setup audio analysis:', error);
+      }
+    };
+
+    setupAudioAnalysis();
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+      if (audioContext) {
+        audioContext.close();
+      }
+    };
+  }, [localAudioTrack]);
 
   const handleStart = useCallback(async () => {
     if (isConnecting || isConnected) return;
@@ -131,7 +250,9 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
         type,
       };
 
-      // Get tokens and start agent
+      console.log('🚀 Starting LiveKit session...');
+
+      // Get tokens and start agent (if using agent API)
       const response = await fetch('/api/livekit/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,14 +272,28 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
       // Connect to the room
       await room.connect(url, participantToken);
 
-      // Enable local audio
-      const audioTrack = await LocalAudioTrack.createAudioTrack({
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      });
+      // Create and publish local audio track with correct API
+      try {
+        const audioTrack = await LocalAudioTrack.create({
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000,
+          channelCount: 1,
+        });
 
-      await room.localParticipant.publishTrack(audioTrack);
+        await room.localParticipant.publishTrack(audioTrack, {
+          name: 'user-audio',
+          source: Track.Source.Microphone,
+        });
+
+        setLocalAudioTrack(audioTrack);
+        console.log('✅ Local audio track published');
+      } catch (audioError) {
+        console.error('❌ Failed to setup audio:', audioError);
+        setError('Failed to access microphone. Please check permissions.');
+        return;
+      }
 
       console.log('✅ Interview session started');
 
@@ -171,6 +306,13 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
 
   const handleStop = useCallback(async () => {
     try {
+      // Stop local audio track
+      if (localAudioTrack) {
+        localAudioTrack.stop();
+        setLocalAudioTrack(null);
+      }
+
+      // Disconnect from room
       await room.disconnect();
       
       // Navigate based on type
@@ -182,32 +324,23 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
     } catch (error) {
       console.error('❌ Error stopping session:', error);
     }
-  }, [room, type, interviewId, router]);
+  }, [room, localAudioTrack, type, interviewId, router]);
 
-  // Monitor audio levels for speaking detection
-  useEffect(() => {
-    if (!isConnected) return;
+  const getConnectionStatusDisplay = () => {
+    switch (connectionState) {
+      case ConnectionState.Connected:
+        return { text: 'Connected', color: 'text-green-400', bg: 'bg-green-500/20' };
+      case ConnectionState.Connecting:
+      case ConnectionState.Reconnecting:
+        return { text: 'Connecting...', color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+      case ConnectionState.Disconnected:
+        return { text: 'Disconnected', color: 'text-gray-400', bg: 'bg-gray-500/20' };
+      default:
+        return { text: 'Unknown', color: 'text-gray-400', bg: 'bg-gray-500/20' };
+    }
+  };
 
-    let rafId: number;
-
-    const monitorAudio = () => {
-      // This is a simplified version - you'd want to implement proper audio level monitoring
-      const audioTracks = Array.from(room.localParticipant.audioTrackPublications.values())
-        .map(pub => pub.track)
-        .filter(track => track && track.source.state === 'enabled');
-
-      const isCurrentlySpeaking = audioTracks.length > 0; // Simplified detection
-      setUserSpeaking(isCurrentlySpeaking);
-
-      rafId = requestAnimationFrame(monitorAudio);
-    };
-
-    monitorAudio();
-
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [isConnected, room]);
+  const status = getConnectionStatusDisplay();
 
   return (
     <div className={cn('voice-agent-container', className)}>
@@ -265,30 +398,15 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
           </div>
         </div>
 
-        {/* Status Indicators */}
-        <div className="flex justify-center gap-4 mb-6">
+        {/* Status Display */}
+        <div className="flex justify-center mb-6">
           <div className={cn(
-            'flex items-center gap-2 px-3 py-1 rounded-full text-sm',
-            isConnected ? 'bg-green-500/20 text-green-400' :
-            isConnecting ? 'bg-yellow-500/20 text-yellow-400' :
-            'bg-gray-500/20 text-gray-400'
+            'flex items-center gap-3 px-4 py-2 rounded-full transition-all duration-300',
+            status.bg
           )}>
-            <div className={cn(
-              'w-2 h-2 rounded-full',
-              isConnected ? 'bg-green-400 animate-pulse' :
-              isConnecting ? 'bg-yellow-400 animate-pulse' :
-              'bg-gray-400'
-            )} />
-            <span className="capitalize">
-              {isConnected ? 'Connected' : isConnecting ? 'Connecting' : 'Disconnected'}
-            </span>
+            <div className={cn('w-2 h-2 rounded-full animate-pulse', status.color.replace('text-', 'bg-'))} />
+            <span className={cn('text-sm font-medium', status.color)}>{status.text}</span>
           </div>
-
-          {questions.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-400">
-              <span>{questions.length} Questions</span>
-            </div>
-          )}
         </div>
 
         {/* Transcript Display */}
@@ -342,6 +460,15 @@ const LiveKitVoiceAgent: React.FC<LiveKitVoiceAgentProps> = ({
             </button>
           )}
         </div>
+
+        {/* Debug Info */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-3 bg-black/30 rounded-lg text-xs text-white/50">
+            <p>Debug: Connection State = {connectionState}</p>
+            <p>Room State = {room.state}</p>
+            <p>Participants = {room.remoteParticipants.size}</p>
+          </div>
+        )}
       </div>
     </div>
   );
