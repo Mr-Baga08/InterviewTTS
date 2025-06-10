@@ -642,10 +642,15 @@ export async function GET() {
       rateLimits: RATE_LIMITS,
     },
     
+    // endpoints: {
+    //   "POST /api/vapi/generate": "Generate new interview questions",
+    //   "GET /api/vapi/generate": "API health check and documentation",
+    //   "HEAD /api/vapi/generate": "Service health check"
+    // }
     endpoints: {
-      "POST /api/vapi/generate": "Generate new interview questions",
-      "GET /api/vapi/generate": "API health check and documentation",
-      "HEAD /api/vapi/generate": "Service health check"
+      "POST /vapi/generate": "Generate new interview questions",
+      "GET /vapi/generate": "API health check and documentation",
+      "HEAD /vapi/generate": "Service health check"
     }
   };
 
