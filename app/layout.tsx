@@ -368,22 +368,61 @@ export default function RootLayout({
 
         {/* Service Worker registration script */}
         <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator && '${process.env.NODE_ENV}' === 'production') {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
-                    });
+  dangerouslySetInnerHTML={{
+    __html: `
+      // Only register service worker in production and if supported
+      if ('serviceWorker' in navigator && '${process.env.NODE_ENV}' === 'production') {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js', {
+            scope: '/',
+            updateViaCache: 'none'
+          })
+          .then(function(registration) {
+            console.log('✅ SW registered successfully:', registration.scope);
+            
+            // Handle updates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New service worker is installed, prompt user to reload
+                    if (confirm('A new version is available. Reload to update?')) {
+                      newWorker.postMessage({ type: 'SKIP_WAITING' });
+                      window.location.reload();
+                    }
+                  }
                 });
               }
-            `,
-          }}
-        />
+            });
+            
+            // Handle service worker updates
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              if (!refreshing) {
+                refreshing = true;
+                window.location.reload();
+              }
+            });
+          })
+          .catch(function(error) {
+            console.warn('⚠️ SW registration failed:', error);
+            // Don't show errors to users, just log for debugging
+          });
+        });
+        
+        // Handle service worker messages
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'CACHE_UPDATED') {
+            console.log('📦 Cache updated by service worker');
+          }
+        });
+      } else {
+        console.log('ℹ️ Service worker not registered (development mode or not supported)');
+      }
+    `,
+  }}
+/>
 
         {/* Analytics script placeholder */}
         {process.env.NEXT_PUBLIC_ANALYTICS_ID && (
