@@ -74,7 +74,9 @@ const AuthForm = ({ type }: { type: FormType }) => {
         }
 
         toast.success("Account created successfully! Please sign in.");
-        router.push("/sign-in");
+        
+        // Use router.replace instead of router.push for better caching
+        router.replace("/sign-in");
         
       } else {
         const { email, password } = data;
@@ -106,17 +108,13 @@ const AuthForm = ({ type }: { type: FormType }) => {
 
         toast.success("Signed in successfully!");
         
-        // Force a full page refresh to ensure the server-side auth state is updated
-        window.location.href = "/";
-        
-        // Alternative: Use router.refresh() + router.push()
-        // router.refresh();
-        // router.push("/");
+        // Use window.location for complete cache refresh
+        window.location.href = "/dashboard";
       }
     } catch (error: any) {
       console.error("Auth error:", error);
       
-      // Handle Firebase Auth errors
+      // Enhanced error handling
       let errorMessage = "An unexpected error occurred";
       
       if (error.code === 'auth/user-not-found') {
@@ -131,6 +129,8 @@ const AuthForm = ({ type }: { type: FormType }) => {
         errorMessage = "Invalid email address";
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = "Too many failed attempts. Please try again later";
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = "Network error. Please check your connection";
       }
       
       toast.error(errorMessage);

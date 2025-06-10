@@ -1,16 +1,15 @@
-// lib/actions/auth.action.ts - FIXED VERSION
 "use server";
 
 import { auth, db } from "@/firebase/admin";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 // Session configuration
 const SESSION_CONFIG = {
   DURATION: 60 * 60 * 24 * 7, // 1 week
   COOKIE_NAME: "session",
-  SECURE_COOKIE_NAME: "session_secure"
 } as const;
 
 // Validation schemas
@@ -26,12 +25,12 @@ const SignUpSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters")
 });
 
-// Enhanced session cookie management
+// Enhanced session cookie management with cache invalidation
 export async function setSessionCookie(idToken: string): Promise<{ success: boolean; message: string }> {
   try {
     const cookieStore = await cookies();
 
-    // Create session cookie with enhanced security
+    // Create session cookie
     const sessionCookie = await auth.createSessionCookie(idToken, {
       expiresIn: SESSION_CONFIG.DURATION * 1000,
     });
@@ -39,7 +38,7 @@ export async function setSessionCookie(idToken: string): Promise<{ success: bool
     // Verify the token to get user info
     const decodedToken = await auth.verifyIdToken(idToken);
     
-    // Enhanced cookie options
+    // Cookie options with enhanced security
     const cookieOptions = {
       maxAge: SESSION_CONFIG.DURATION,
       httpOnly: true,
@@ -48,13 +47,16 @@ export async function setSessionCookie(idToken: string): Promise<{ success: bool
       sameSite: "lax" as const,
     };
 
-    // Set primary session cookie
+    // Set session cookie
     cookieStore.set(SESSION_CONFIG.COOKIE_NAME, sessionCookie, cookieOptions);
 
     // Update user's last login
     await updateUserSession(decodedToken.uid, {
       lastLogin: new Date().toISOString(),
     });
+
+    // Clear any cached user data
+    revalidatePath("/");
 
     return {
       success: true,
@@ -173,6 +175,10 @@ export async function signIn(params: any) {
       return sessionResult;
     }
 
+    // Clear any cached data
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+
     return {
       success: true,
       message: "Successfully signed in"
@@ -201,9 +207,8 @@ export async function signOut() {
     const cookieStore = await cookies();
     const user = await getCurrentUser();
 
-    // Clear all session cookies
+    // Clear session cookie
     cookieStore.delete(SESSION_CONFIG.COOKIE_NAME);
-    cookieStore.delete(SESSION_CONFIG.SECURE_COOKIE_NAME);
 
     // Update user's last activity
     if (user?.id) {
@@ -212,6 +217,11 @@ export async function signOut() {
         signedOutAt: new Date().toISOString()
       });
     }
+
+    // Clear all cached data
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    revalidatePath("/sign-in");
 
     return {
       success: true,
@@ -224,7 +234,10 @@ export async function signOut() {
     // Even if cleanup fails, clear the cookies
     const cookieStore = await cookies();
     cookieStore.delete(SESSION_CONFIG.COOKIE_NAME);
-    cookieStore.delete(SESSION_CONFIG.SECURE_COOKIE_NAME);
+
+    // Clear cached data
+    revalidatePath("/");
+    revalidatePath("/dashboard");
 
     return {
       success: true,
@@ -233,13 +246,14 @@ export async function signOut() {
   }
 }
 
-// FIXED: More efficient getCurrentUser with caching
+// FIXED: More robust getCurrentUser with better caching
 export async function getCurrentUser() {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(SESSION_CONFIG.COOKIE_NAME)?.value;
     
     if (!sessionCookie) {
+      console.log("🔐 getCurrentUser: No session cookie found");
       return null;
     }
 
@@ -250,6 +264,7 @@ export async function getCurrentUser() {
     const userDoc = await db.collection("users").doc(decodedClaims.uid).get();
     
     if (!userDoc.exists) {
+      console.log("🔐 getCurrentUser: User document not found, clearing session");
       // Clear invalid session
       const cookieStore = await cookies();
       cookieStore.delete(SESSION_CONFIG.COOKIE_NAME);
@@ -263,18 +278,22 @@ export async function getCurrentUser() {
       lastActivity: new Date().toISOString()
     }).catch(console.warn);
 
-    return {
+    const user = {
       id: userDoc.id,
       ...userData,
       sessionExpires: new Date(decodedClaims.exp * 1000).toISOString()
-    } as any;
+    };
+
+    console.log("🔐 getCurrentUser: User authenticated", user.email);
+    return user as any;
 
   } catch (error: any) {
+    console.error("🔐 getCurrentUser error:", error);
+    
     // Clear invalid session cookies on any error
     try {
       const cookieStore = await cookies();
       cookieStore.delete(SESSION_CONFIG.COOKIE_NAME);
-      cookieStore.delete(SESSION_CONFIG.SECURE_COOKIE_NAME);
     } catch (cleanupError) {
       console.error("Error clearing cookies:", cleanupError);
     }
