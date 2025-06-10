@@ -1,29 +1,34 @@
 {
-  "name": "ai_interview",
-  "version": "0.1.0",
+  "name": "thetruthschool-livekit",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "livekit:dev": "livekit-server --dev",
+    "setup:models": "node scripts/download-models.js",
+    "clean": "rm -rf .next node_modules/.cache",
+    "setup:livekit": "chmod +x scripts/setup-livekit.sh && ./scripts/setup-livekit.sh"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.19",
     "@hookform/resolvers": "^4.1.3",
+    "@livekit/components-react": "^2.9.9",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
-    "@vapi-ai/web": "^2.3.5",
     "ai": "^4.3.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
     "firebase": "^11.9.0",
     "firebase-admin": "^13.4.0",
+    "livekit-client": "^2.13.4",
+    "livekit-server-sdk": "^2.13.0",
     "lucide-react": "^0.513.0",
     "next": "15.3.3",
     "next-themes": "^0.4.6",
-    "radix-ui": "^1.4.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
@@ -37,11 +42,19 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web": "^0.0.129",
     "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "onnxruntime-web": "^1.22.0"
   }
 }
