@@ -1,257 +1,233 @@
-// components/VapiTest.tsx
+// components/VapiTest.tsx - Updated for type-safe VAPI SDK
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { vapi, vapiUtils } from "@/lib/vapi.sdk";
+import { vapiDevUtils } from "@/lib/vapi.sdk";
+
+interface TestResult {
+  configTest: {
+    success: boolean;
+    message: string;
+    token?: string;
+    details?: {
+      tokenLength: number;
+      tokenPreview: string;
+      hasCorrectPrefix: boolean;
+    };
+  };
+  diagnostics: any;
+  timestamp: string;
+  error?: string;
+}
 
 const VapiTest = () => {
-  const [isTestRunning, setIsTestRunning] = useState(false);
-  const [testLogs, setTestLogs] = useState<string[]>([]);
-  const [callStatus, setCallStatus] = useState<string>("inactive");
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const addLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setTestLogs(prev => [...prev, `[${timestamp}] ${message}`]);
-  };
-
-  const clearLogs = () => {
-    setTestLogs([]);
-  };
-
-  const testBasicConnection = async () => {
-    setIsTestRunning(true);
-    addLog("🔍 Testing basic VAPI connection...");
-
+  const runTest = () => {
+    setIsLoading(true);
+    
     try {
-      if (!vapiUtils.isReady()) {
-        addLog("❌ VAPI is not ready - check your token configuration");
-        return;
-      }
-
-      addLog("✅ VAPI SDK is ready");
+      console.log('🧪 Running VAPI configuration test...');
       
-      const config = vapiUtils.getConfig();
-      addLog(`📋 Token: ${config.token || 'Not found'}`);
-      addLog(`🌐 Base URL: ${config.baseUrl || 'Default'}`);
+      // Test configuration
+      const configTest = vapiDevUtils.testConfig();
+      const diagnostics = vapiDevUtils.getDiagnostics();
       
-      addLog("✅ Basic connection test completed");
+      const result: TestResult = {
+        configTest,
+        diagnostics,
+        timestamp: new Date().toISOString()
+      };
+      
+      setTestResult(result);
+      
+      console.log('✅ VAPI test completed:', result);
       
     } catch (error: any) {
-      addLog(`❌ Error: ${error.message}`);
-    } finally {
-      setIsTestRunning(false);
-    }
-  };
-
-  const testVoiceCall = async () => {
-    setIsTestRunning(true);
-    addLog("📞 Testing voice call functionality...");
-
-    try {
-      if (!vapi) {
-        addLog("❌ VAPI instance not available");
-        return;
-      }
-
-      // Set up event listeners
-      const onCallStart = () => {
-        addLog("✅ Call started successfully");
-        setCallStatus("active");
-      };
-
-      const onCallEnd = () => {
-        addLog("📞 Call ended");
-        setCallStatus("ended");
-      };
-
-      const onError = (error: any) => {
-        addLog(`❌ Call error: ${error.message}`);
-        setCallStatus("error");
-      };
-
-      const onMessage = (message: any) => {
-        addLog(`💬 Message: ${message.type} - ${JSON.stringify(message).substring(0, 100)}...`);
-      };
-
-      // Add event listeners
-      vapi.on('call-start', onCallStart);
-      vapi.on('call-end', onCallEnd);
-      vapi.on('error', onError);
-      vapi.on('message', onMessage);
-
-      addLog("🎯 Starting test call...");
-      setCallStatus("connecting");
-
-      // Test with a simple assistant configuration
-      const testAssistant = {
-        name: "Test Assistant",
-        model: {
-          provider: "openai",
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: "You are a test assistant. Say 'Hello, this is a test call' and then end the call."
-            }
-          ]
+      console.error('❌ VAPI test failed:', error);
+      setTestResult({
+        configTest: {
+          success: false,
+          message: error.message || 'Test failed'
         },
-        voice: {
-          provider: "11labs",
-          voiceId: "21m00Tcm4TlvDq8ikWAM"
-        }
-      };
-
-      await vapiUtils.startCall(testAssistant);
-      
-      // Auto-stop the call after 5 seconds for testing
-      setTimeout(() => {
-        if (callStatus === "active") {
-          addLog("⏱️ Auto-stopping test call after 5 seconds");
-          vapiUtils.stopCall();
-        }
-      }, 5000);
-
-      // Cleanup listeners after test
-      setTimeout(() => {
-        vapi.off('call-start', onCallStart);
-        vapi.off('call-end', onCallEnd);
-        vapi.off('error', onError);
-        vapi.off('message', onMessage);
-      }, 10000);
-
-    } catch (error: any) {
-      addLog(`❌ Call test failed: ${error.message}`);
-      setCallStatus("error");
+        diagnostics: null,
+        timestamp: new Date().toISOString(),
+        error: error.message
+      });
     } finally {
-      setIsTestRunning(false);
+      setIsLoading(false);
     }
   };
 
-  const stopCall = () => {
-    try {
-      vapiUtils.stopCall();
-      addLog("🛑 Manually stopped call");
-      setCallStatus("stopped");
-    } catch (error: any) {
-      addLog(`❌ Error stopping call: ${error.message}`);
-    }
+  const getStatusColor = (success: boolean) => {
+    return success 
+      ? "text-green-400 bg-green-500/20 border-green-500/30" 
+      : "text-red-400 bg-red-500/20 border-red-500/30";
+  };
+
+  const getStatusIcon = (success: boolean) => {
+    return success ? (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    );
   };
 
   return (
-    <div className="apple-glass rounded-2xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-white">VAPI Function Tests</h3>
-        <div className="flex gap-2">
-          <Button 
-            onClick={clearLogs}
-            variant="outline"
-            size="sm"
-            className="text-white/70 border-white/20"
+    <div className="max-w-2xl mx-auto p-6">
+      {/* Test Header */}
+      <div className="apple-glass rounded-2xl p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              VAPI Configuration Test
+            </h2>
+            <p className="text-white/60 text-sm">
+              Test your VAPI token and configuration
+            </p>
+          </div>
+
+          <button
+            onClick={runTest}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition-colors"
           >
-            Clear Logs
-          </Button>
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Testing...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Run Test
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {/* Test Controls */}
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            onClick={testBasicConnection}
-            disabled={isTestRunning}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Test Connection
-          </Button>
-          
-          <Button 
-            onClick={testVoiceCall}
-            disabled={isTestRunning || callStatus === "active"}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Test Voice Call
-          </Button>
-          
-          {(callStatus === "active" || callStatus === "connecting") && (
-            <Button 
-              onClick={stopCall}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Stop Call
-            </Button>
+      {/* Test Results */}
+      {testResult && (
+        <div className="space-y-4">
+          {/* Configuration Test Result */}
+          <div className="apple-glass rounded-2xl p-6">
+            <div className={`flex items-center gap-3 p-4 rounded-xl border ${getStatusColor(testResult.configTest.success)}`}>
+              {getStatusIcon(testResult.configTest.success)}
+              <div>
+                <h3 className="font-medium">Configuration Test</h3>
+                <p className="text-sm opacity-80">{testResult.configTest.message}</p>
+              </div>
+            </div>
+
+            {/* Configuration Details */}
+            {testResult.configTest.details && (
+              <div className="mt-4 p-4 bg-black/20 rounded-xl">
+                <h4 className="text-sm font-medium text-white/80 mb-2">Details:</h4>
+                <div className="space-y-1 text-sm text-white/60">
+                  <div>Token Length: {testResult.configTest.details.tokenLength}</div>
+                  <div>Token Preview: {testResult.configTest.details.tokenPreview}</div>
+                  <div>Correct Prefix: {testResult.configTest.details.hasCorrectPrefix ? '✅' : '❌'}</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Environment Information */}
+          {testResult.diagnostics && (
+            <div className="apple-glass rounded-2xl p-6">
+              <h3 className="font-medium text-white mb-4">Environment Information</h3>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                  <span className="text-white/70">Node Environment:</span>
+                  <span className="text-white font-mono">{testResult.diagnostics.environment.nodeEnv}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                  <span className="text-white/70">VAPI Token Present:</span>
+                  <span className={testResult.diagnostics.environment.hasToken ? 'text-green-400' : 'text-red-400'}>
+                    {testResult.diagnostics.environment.hasToken ? '✅ Yes' : '❌ No'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                  <span className="text-white/70">Workflow ID Present:</span>
+                  <span className={testResult.diagnostics.environment.hasWorkflowId ? 'text-green-400' : 'text-yellow-400'}>
+                    {testResult.diagnostics.environment.hasWorkflowId ? '✅ Yes' : '⚠️ No (Optional)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Browser Support */}
+          {testResult.diagnostics?.browserSupport && (
+            <div className="apple-glass rounded-2xl p-6">
+              <h3 className="font-medium text-white mb-4">Browser Support</h3>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                  <span className="text-white/70">WebRTC:</span>
+                  <span className={testResult.diagnostics.browserSupport.webRTC ? 'text-green-400' : 'text-red-400'}>
+                    {testResult.diagnostics.browserSupport.webRTC ? '✅ Supported' : '❌ Not Supported'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                  <span className="text-white/70">Web Audio:</span>
+                  <span className={testResult.diagnostics.browserSupport.webAudio ? 'text-green-400' : 'text-red-400'}>
+                    {testResult.diagnostics.browserSupport.webAudio ? '✅ Supported' : '❌ Not Supported'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                  <span className="text-white/70">getUserMedia:</span>
+                  <span className={testResult.diagnostics.browserSupport.getUserMedia ? 'text-green-400' : 'text-red-400'}>
+                    {testResult.diagnostics.browserSupport.getUserMedia ? '✅ Supported' : '❌ Not Supported'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error Details */}
+          {testResult.error && (
+            <div className="apple-glass rounded-2xl p-6">
+              <h3 className="font-medium text-red-400 mb-4">Error Details</h3>
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                <code className="text-sm text-red-300">{testResult.error}</code>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Fix Guide */}
+          {!testResult.configTest.success && (
+            <div className="apple-glass rounded-2xl p-6">
+              <h3 className="font-medium text-blue-400 mb-4">💡 Quick Fix</h3>
+              <div className="space-y-3 text-sm text-white/80">
+                <p>1. Add your VAPI token to <code className="bg-black/30 px-1 rounded">.env.local</code>:</p>
+                <div className="p-3 bg-black/30 rounded-lg font-mono text-xs">
+                  NEXT_PUBLIC_VAPI_WEB_TOKEN=sk-your-actual-token-here
+                </div>
+                <p>2. Get your token from: <a href="https://vapi.ai/dashboard/api-keys" target="_blank" className="text-blue-400 hover:underline">VAPI Dashboard</a></p>
+                <p>3. Restart your development server</p>
+                <p>4. Click "Run Test" again</p>
+              </div>
+            </div>
           )}
         </div>
-
-        {/* Call Status */}
-        <div className="bg-black/20 rounded-xl p-3">
-          <div className="flex items-center gap-2">
-            <span className="text-white/70">Call Status:</span>
-            <span className={`font-medium ${
-              callStatus === "active" ? "text-green-400" :
-              callStatus === "connecting" ? "text-yellow-400" :
-              callStatus === "error" ? "text-red-400" :
-              "text-white/60"
-            }`}>
-              {callStatus.charAt(0).toUpperCase() + callStatus.slice(1)}
-            </span>
-            {callStatus === "active" && (
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            )}
-          </div>
-        </div>
-
-        {/* Test Logs */}
-        <div className="bg-black/20 rounded-xl p-4">
-          <h4 className="font-medium text-white mb-3">Test Logs</h4>
-          <div className="bg-black/30 rounded-lg p-3 max-h-64 overflow-y-auto">
-            {testLogs.length === 0 ? (
-              <div className="text-white/50 text-sm text-center py-4">
-                No logs yet. Run a test to see output.
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {testLogs.map((log, index) => (
-                  <div key={index} className="text-sm font-mono text-white/80">
-                    {log}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Environment Info */}
-        <div className="bg-black/20 rounded-xl p-4">
-          <h4 className="font-medium text-white mb-2">Environment Info</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-white/70">VAPI Ready:</span>
-              <span className={vapiUtils.isReady() ? "text-green-400" : "text-red-400"}>
-                {vapiUtils.isReady() ? "✅ Yes" : "❌ No"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/70">Secure Context:</span>
-              <span className={window.isSecureContext ? "text-green-400" : "text-red-400"}>
-                {window.isSecureContext ? "✅ Yes" : "❌ No"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/70">WebRTC:</span>
-              <span className={!!window.RTCPeerConnection ? "text-green-400" : "text-red-400"}>
-                {!!window.RTCPeerConnection ? "✅ Supported" : "❌ Not Supported"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/70">User Media:</span>
-              <span className={!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? "text-green-400" : "text-red-400"}>
-                {!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? "✅ Supported" : "❌ Not Supported"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -614,6 +614,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Fixed version of your API route with correct endpoint documentation
 export async function GET() {
   const healthData = {
     service: "TheTruthSchool.ai Interview Generation API",
@@ -642,14 +643,10 @@ export async function GET() {
       rateLimits: RATE_LIMITS,
     },
     
-    // endpoints: {
-    //   "POST /api/vapi/generate": "Generate new interview questions",
-    //   "GET /api/vapi/generate": "API health check and documentation",
-    //   "HEAD /api/vapi/generate": "Service health check"
-    // }
+    // Fixed: Use the correct path based on your file structure
     endpoints: {
       "POST /vapi/generate": "Generate new interview questions",
-      "GET /vapi/generate": "API health check and documentation",
+      "GET /vapi/generate": "API health check and documentation", 
       "HEAD /vapi/generate": "Service health check"
     }
   };
