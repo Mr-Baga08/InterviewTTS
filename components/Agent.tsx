@@ -1,4 +1,4 @@
-// Fixed Agent.tsx with proper error handling and URL construction
+// components/Agent.tsx - FIXED for VAPI Workflows
 "use client";
 
 import Image from "next/image";
@@ -119,13 +119,15 @@ const Agent = ({
       console.error("❌ VAPI Error:", error);
       setError(error.message);
       
-      // Enhanced error handling
-      if (error.message?.includes('405') || error.message?.includes('Method Not Allowed')) {
+      // Enhanced error handling for workflows
+      if (error.message?.includes('400') || error.message?.includes('Bad Request')) {
+        setError('Workflow configuration error. Please check your workflow ID and parameters.');
+      } else if (error.message?.includes('405') || error.message?.includes('Method Not Allowed')) {
         setError('API endpoint error. Please check your workflow configuration.');
       } else if (error.message?.includes('Unauthorized') || error.message?.includes('401')) {
         setError('Authentication failed. Please check your VAPI token.');
-      } else if (error.message?.includes('Unexpected end of JSON input')) {
-        setError('Server response error. Please try again.');
+      } else if (error.message?.includes('Workflow not found') || error.message?.includes('404')) {
+        setError('Workflow not found. Please check your NEXT_PUBLIC_VAPI_WORKFLOW_ID.');
       }
       
       setCallStatus(CallStatus.ERROR);
@@ -207,7 +209,7 @@ const Agent = ({
       setError(null);
 
       if (type === "generate") {
-        // FIXED: Ensure we're passing the workflow ID as a string
+        // FIXED: For workflow calls, use workflow ID as string with overrides
         const workflowId = process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID;
         
         if (!workflowId) {
@@ -216,18 +218,18 @@ const Agent = ({
 
         console.log('🔄 Starting workflow call with ID:', workflowId);
         
-        // FIXED: Ensure all variable values are strings/primitives
-        const variableValues = {
-          username: String(userName || ''),
-          userid: String(userId || ''),
+        // FIXED: Use workflow ID as string with variableValues in overrides
+        const overrides = {
+          variableValues: {
+            username: String(userName || ''),
+            userid: String(userId || ''),
+          }
         };
 
-        console.log('📋 Sending variables:', variableValues);
+        console.log('📋 Workflow overrides:', overrides);
 
-        // Use the workflow ID directly as a string
-        await vapiUtils.startCall(workflowId, {
-          variableValues: variableValues,
-        });
+        // FIXED: Pass workflow ID as string, overrides as second parameter
+        await vapi.start(workflowId, overrides);
         
       } else {
         // For interview type, use the assistant configuration
@@ -238,11 +240,17 @@ const Agent = ({
             .join("\n");
         }
 
-        await vapiUtils.startCall(interviewer, {
+        const assistantConfig = {
+          ...interviewer,
+        };
+
+        const assistantOverrides = {
           variableValues: {
             questions: formattedQuestions,
-          },
-        });
+          }
+        };
+
+        await vapi.start(assistantConfig, assistantOverrides);
       }
 
       console.log("✅ Call started successfully");
@@ -252,7 +260,9 @@ const Agent = ({
       // Enhanced error handling
       let errorMessage = error.message;
       
-      if (error.message?.includes('405')) {
+      if (error.message?.includes('400') || error.message?.includes('Bad Request')) {
+        errorMessage = 'Workflow call failed. Please check your workflow configuration and variable names.';
+      } else if (error.message?.includes('405')) {
         errorMessage = 'Server endpoint error. Please check your API configuration.';
       } else if (error.message?.includes('Workflow not found')) {
         errorMessage = 'Workflow not found. Please check your NEXT_PUBLIC_VAPI_WORKFLOW_ID.';
@@ -311,13 +321,18 @@ const Agent = ({
             <div className="text-xs text-white/40 text-center space-y-2">
               <p>Please check your environment variables:</p>
               <div className="bg-black/30 p-3 rounded text-left">
-                <code className="block">NEXT_PUBLIC_VAPI_WEB_TOKEN=pk-...</code>
+                <code className="block">NEXT_PUBLIC_VAPI_WEB_TOKEN=your-token</code>
                 <code className="block">NEXT_PUBLIC_VAPI_WORKFLOW_ID=your-workflow-id</code>
               </div>
               {type === "generate" && (
-                <p className="text-yellow-400">
-                  Make sure your workflow ID is correct and the workflow is published in VAPI dashboard.
-                </p>
+                <div className="text-yellow-400 space-y-1">
+                  <p>For workflow calls, make sure:</p>
+                  <ul className="text-left text-xs">
+                    <li>• Your workflow is published in VAPI dashboard</li>
+                    <li>• Variable names (username, userid) match your workflow</li>
+                    <li>• Your workflow ID is correct</li>
+                  </ul>
+                </div>
               )}
             </div>
           </div>
