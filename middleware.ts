@@ -1,3 +1,4 @@
+// middleware.ts - FIXED VERSION
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
@@ -11,7 +12,8 @@ export function middleware(request: NextRequest) {
   const publicRoutes = [
     '/sign-in',
     '/sign-up', 
-    '/api',
+    '/api',           // Keep existing API routes
+    '/vapi',          // ADD THIS - Your VAPI routes
     '/_next',
     '/favicon.ico',
     '/logo.svg',
@@ -57,11 +59,12 @@ export const config = {
     /*
      * Match all request paths except:
      * - api routes (handled separately)
+     * - vapi routes (your custom API routes) - UPDATED
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder files
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|vapi|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
