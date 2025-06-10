@@ -1,4 +1,4 @@
-// lib/vapi.sdk.ts - FIXED VERSION with Enhanced Authentication
+// lib/vapi.sdk.ts - FIXED VERSION for workflows
 import Vapi from "@vapi-ai/web";
 
 interface VapiConfig {
@@ -14,13 +14,12 @@ interface ConfigTestResult {
   details?: {
     tokenLength: number;
     tokenPreview: string;
-    hasCorrectPrefix: boolean;
     isValidFormat: boolean;
     tokenType: 'public' | 'private' | 'unknown';
   };
 }
 
-// Enhanced token validation with better error detection
+// FIXED: More flexible token validation for VAPI workflows
 function validateVapiToken(token: string): { 
   valid: boolean; 
   reason?: string; 
@@ -30,30 +29,29 @@ function validateVapiToken(token: string): {
     return { valid: false, reason: 'Token is empty or not a string' };
   }
 
-  if (token.length < 20) {
-    return { valid: false, reason: 'Token is too short (should be at least 20 characters)' };
+  if (token.length < 10) {
+    return { valid: false, reason: 'Token is too short (should be at least 10 characters)' };
   }
 
-  // Determine token type
+  // FIXED: More flexible token type detection
   let tokenType: 'public' | 'private' | 'unknown' = 'unknown';
+  
+  // Check for known prefixes
   if (token.startsWith('pk-')) {
     tokenType = 'public';
   } else if (token.startsWith('sk-')) {
     tokenType = 'private';
-  } else {
-    return { valid: false, reason: 'Token should start with "pk-" (public) or "sk-" (private)' };
-  }
-
-  // For web SDK, we need public key (pk-) not secret key (sk-)
-  if (tokenType === 'private') {
     return { 
       valid: false, 
-      reason: 'Web SDK requires a public token (pk-), not a private token (sk-). Check your environment variables.',
+      reason: 'Web SDK requires a public token, not a private token (sk-). Check your environment variables.',
       tokenType 
     };
+  } else {
+    // FIXED: Accept tokens without pk- prefix (VAPI public keys can vary)
+    tokenType = 'public'; // Assume it's public if it doesn't start with sk-
   }
 
-  // Basic format check
+  // Basic format check - allow alphanumeric, hyphens, underscores
   if (!/^[a-zA-Z0-9_-]+$/.test(token)) {
     return { valid: false, reason: 'Token contains invalid characters', tokenType };
   }
@@ -99,7 +97,7 @@ function getVapiToken(): { token: string | null; error?: string; tokenType?: str
 
   return { 
     token: null, 
-    error: 'No VAPI token found. Please set NEXT_PUBLIC_VAPI_WEB_TOKEN with a PUBLIC key (pk-...) in your .env.local file.' 
+    error: 'No VAPI token found. Please set NEXT_PUBLIC_VAPI_WEB_TOKEN in your .env.local file.' 
   };
 }
 
@@ -156,17 +154,17 @@ function createVapiInstance(): Vapi | null {
             error.status === 401 ||
             error.message?.includes('Missing Authorization Header')) {
           console.error('🔐 AUTHENTICATION ERROR - TROUBLESHOOTING:');
-          console.error('   1. Your token type:', config.token.startsWith('pk-') ? 'Public Key ✅' : 'Private Key ❌');
-          console.error('   2. Current token preview:', `${config.token.substring(0, 8)}...`);
-          console.error('   3. Token length:', config.token.length);
-          console.error('   4. SOLUTION: Make sure you\'re using a PUBLIC key (pk-...) not a PRIVATE key (sk-...)');
-          console.error('   5. Check your VAPI dashboard at https://dashboard.vapi.ai/');
+          console.error('   1. Current token preview:', `${config.token.substring(0, 8)}...`);
+          console.error('   2. Token length:', config.token.length);
+          console.error('   3. Make sure you\'re using a PUBLIC key from VAPI dashboard');
+          console.error('   4. Check your VAPI dashboard at https://dashboard.vapi.ai/');
         }
 
-        if (error.message?.includes('Assistant not found') || error.statusCode === 404) {
-          console.error('🤖 ASSISTANT/WORKFLOW ERROR:');
-          console.error('   - The assistant or workflow ID might be incorrect');
+        if (error.message?.includes('Workflow not found') || error.statusCode === 404) {
+          console.error('🤖 WORKFLOW ERROR:');
+          console.error('   - The workflow ID might be incorrect');
           console.error('   - Check your NEXT_PUBLIC_VAPI_WORKFLOW_ID in .env.local');
+          console.error('   - Make sure the workflow is published in VAPI dashboard');
         }
       });
 
@@ -194,8 +192,8 @@ function createVapiInstance(): Vapi | null {
     console.error('❌ Failed to initialize VAPI SDK:', error.message);
     console.error('💡 Troubleshooting checklist:');
     console.error('   1. Set NEXT_PUBLIC_VAPI_WEB_TOKEN in .env.local');
-    console.error('   2. Use a PUBLIC key (pk-...) NOT a private key (sk-...)');
-    console.error('   3. Get your public key from https://dashboard.vapi.ai/');
+    console.error('   2. Use a PUBLIC key from VAPI dashboard (not private key)');
+    console.error('   3. Set NEXT_PUBLIC_VAPI_WORKFLOW_ID for workflow calls');
     console.error('   4. Ensure token is not expired');
     console.error('   5. Verify you have the correct permissions');
     return null;
@@ -214,20 +212,31 @@ export const vapiUtils = {
     return vapiInstance !== null;
   },
 
-  async startCall(assistant: any, options?: { variableValues?: any }): Promise<void> {
+  async startCall(assistantOrWorkflowId: any, options?: { variableValues?: any }): Promise<void> {
     if (!vapiInstance) {
       throw new Error('VAPI not initialized. Please check your token configuration.');
     }
 
     try {
       console.log('📞 Starting VAPI call...');
-      console.log('🤖 Assistant config:', typeof assistant === 'string' ? `Workflow ID: ${assistant}` : 'Custom assistant object');
       
-      if (options?.variableValues) {
-        console.log('📋 Variable values:', options.variableValues);
-        await vapiInstance.start(assistant, { variableValues: options.variableValues });
+      // Check if it's a workflow ID (string) or assistant object
+      if (typeof assistantOrWorkflowId === 'string') {
+        console.log('🔄 Using workflow ID:', assistantOrWorkflowId);
+        
+        if (options?.variableValues) {
+          console.log('📋 Variable values:', options.variableValues);
+          await vapiInstance.start(assistantOrWorkflowId, { variableValues: options.variableValues });
+        } else {
+          await vapiInstance.start(assistantOrWorkflowId);
+        }
       } else {
-        await vapiInstance.start(assistant);
+        console.log('🤖 Using assistant object');
+        if (options?.variableValues) {
+          await vapiInstance.start(assistantOrWorkflowId, { variableValues: options.variableValues });
+        } else {
+          await vapiInstance.start(assistantOrWorkflowId);
+        }
       }
       
       console.log('✅ VAPI call started successfully');
@@ -239,17 +248,18 @@ export const vapiUtils = {
         response: error.response
       });
       
-      // Enhanced error messages
+      // Enhanced error messages for workflows
       if (error.message?.includes('Unauthorized') || 
           error.statusCode === 401 ||
           error.status === 401) {
-        throw new Error('🔐 Authentication failed. You need a PUBLIC key (pk-...) for the web SDK. Check your .env.local file and make sure NEXT_PUBLIC_VAPI_WEB_TOKEN contains a public key from https://dashboard.vapi.ai/');
+        throw new Error('🔐 Authentication failed. Check your VAPI token in .env.local');
       }
       
       if (error.message?.includes('Not Found') || 
+          error.message?.includes('Workflow not found') ||
           error.statusCode === 404 || 
           error.status === 404) {
-        throw new Error('🤖 Assistant or workflow not found. Please check your assistant ID or workflow ID.');
+        throw new Error('🔄 Workflow not found. Please check your NEXT_PUBLIC_VAPI_WORKFLOW_ID and ensure the workflow is published.');
       }
 
       if (error.message?.includes('Rate Limit') || 
@@ -314,7 +324,6 @@ export const vapiDevUtils = {
           details: {
             tokenLength: token.length,
             tokenPreview: `${token.substring(0, 8)}...${token.substring(token.length - 4)}`,
-            hasCorrectPrefix: token.startsWith('pk-') || token.startsWith('sk-'),
             isValidFormat: /^[a-zA-Z0-9_-]+$/.test(token),
             tokenType: validation.tokenType || 'unknown'
           }
@@ -328,7 +337,6 @@ export const vapiDevUtils = {
         details: {
           tokenLength: token.length,
           tokenPreview: `${token.substring(0, 8)}...${token.substring(token.length - 4)}`,
-          hasCorrectPrefix: true,
           isValidFormat: true,
           tokenType: validation.tokenType || 'unknown'
         }
@@ -370,7 +378,7 @@ export const vapiDevUtils = {
     try {
       const config = createConfig();
       
-      // Test basic API connectivity with correct authentication
+      // Test basic API connectivity
       const response = await fetch(`${config.baseUrl}/assistant`, {
         method: 'GET',
         headers: {
@@ -392,7 +400,7 @@ export const vapiDevUtils = {
           details: { 
             status: response.status, 
             response: errorData,
-            suggestion: response.status === 401 ? 'Check if you\'re using a public key (pk-...) for web SDK' : 'Check your token permissions'
+            suggestion: response.status === 401 ? 'Check your VAPI token' : 'Check your token permissions'
           }
         };
       }
