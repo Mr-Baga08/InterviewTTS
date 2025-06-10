@@ -1,6 +1,6 @@
 // app/(root)/debug/vapi/page.tsx
-import VapiTokenChecker from "@/components/VapiTokenChecker";
-import VapiTest from "@/components/VapiTest";
+import { VapiTokenChecker, VapiTest } from "@/components/VapiTokenChecker";
+// import VapiTest from "@/components/VapiTest";
 
 const VapiDebugPage = () => {
   return (
@@ -26,5 +26,5 @@ const VapiDebugPage = () => {
     </div>
   );
 };
-
+ 
 export default VapiDebugPage;

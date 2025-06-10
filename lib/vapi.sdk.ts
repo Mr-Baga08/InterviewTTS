@@ -127,11 +127,8 @@ function createVapiInstance(): Vapi | null {
     console.log('📍 Base URL:', config.baseUrl);
     console.log('🔑 Token preview:', `${config.token.substring(0, 12)}...${config.token.substring(config.token.length - 4)}`);
     
-    // Create VAPI instance with enhanced configuration
-    const vapiInstance = new Vapi(config.token, {
-      // Add explicit configuration for better debugging
-      apiUrl: config.baseUrl,
-    });
+    // Create VAPI instance (only accepts token as parameter)
+    const vapiInstance = new Vapi(config.token);
 
     // Enhanced event listeners for debugging
     if (config.debug) {

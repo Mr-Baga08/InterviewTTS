@@ -413,17 +413,285 @@ const validateAndEnhanceQuestions = (
    MAIN API HANDLERS
    ========================================================================== */
 
+// export async function POST(request: NextRequest) {
+//   const startTime = Date.now();
+  
+//   try {
+//     // Get client information
+//     const clientInfo = await getClientInfo(request);
+//     const clientIP = getClientIP(request);
+
+//     // Parse and validate request body
+//     const jsonResult = await safeParseJSON(request);
+//     if (!jsonResult.success) {
+//       return createErrorResponse({
+//         code: 'INVALID_JSON',
+//         message: 'Invalid JSON in request body',
+//         details: jsonResult.error,
+//         suggestion: 'Ensure request body contains valid JSON'
+//       }, 400);
+//     }
+
+//     // Validate request schema
+//     const validation = validateRequest(InterviewRequestSchema, jsonResult.data);
+//     if (!validation.success) {
+//       return createErrorResponse({
+//         code: 'VALIDATION_ERROR',
+//         message: 'Invalid request data',
+//         details: validation.details,
+//         suggestion: 'Check the API documentation for required fields and formats'
+//       }, 400);
+//     }
+
+//     const { 
+//       type, 
+//       role, 
+//       level, 
+//       techstack, 
+//       amount, 
+//       userid, 
+//       difficulty, 
+//       focus, 
+//       industry, 
+//       companySize 
+//     } = validation.data;
+
+//     // Rate limiting
+//     const rateLimitResult = await checkRateLimit(userid, clientIP);
+//     if (!rateLimitResult.allowed) {
+//       return createErrorResponse({
+//         code: 'RATE_LIMIT_EXCEEDED',
+//         message: 'Too many requests. Please try again later.',
+//         suggestion: 'Wait before making another request',
+//         retryAfter: Math.ceil((rateLimitResult.resetTime! - Date.now()) / 1000)
+//       }, 429);
+//     }
+
+//     // Generate questions with AI
+//     let questions: string[];
+//     try {
+//       const prompt = createInterviewPrompt({
+//         role, 
+//         level, 
+//         techstack, 
+//         type, 
+//         amount, 
+//         difficulty, 
+//         focus, 
+//         industry, 
+//         companySize
+//       });
+      
+//       const { text: questionsText } = await generateText({
+//         model: google("gemini-2.0-flash-001"),
+//         prompt,
+//         maxTokens: 3000,
+//         temperature: 0.7,
+//         topP: 0.9,
+//       });
+
+//       // Parse and validate AI response
+//       let parsedQuestions;
+//       try {
+//         parsedQuestions = JSON.parse(questionsText);
+//       } catch {
+//         throw new Error("AI returned invalid JSON format");
+//       }
+
+//       if (!Array.isArray(parsedQuestions)) {
+//         throw new Error("AI response is not an array");
+//       }
+
+//       questions = validateAndEnhanceQuestions(parsedQuestions, amount, role);
+      
+//     } catch (aiError: any) {
+//       console.error("AI Generation Error:", {
+//         error: aiError.message,
+//         role,
+//         level,
+//         type,
+//         userid,
+//         timestamp: new Date().toISOString()
+//       });
+
+//       return createErrorResponse({
+//         code: 'AI_GENERATION_FAILED',
+//         message: 'Failed to generate interview questions',
+//         details: 'Our AI service is temporarily unavailable',
+//         suggestion: 'Please try again in a few moments'
+//       }, 503);
+//     }
+
+//     // Create enhanced interview object
+//     const interview = {
+//       role: role.trim(),
+//       type,
+//       level,
+//       techstack: techstack.split(",").map(tech => tech.trim()).filter(Boolean),
+//       questions,
+//       userId: userid,
+//       finalized: true,
+//       coverImage: getRandomInterviewCover(),
+//       createdAt: new Date().toISOString(),
+//       updatedAt: new Date().toISOString(),
+      
+//       // Enhanced metadata
+//       metadata: {
+//         requestedAmount: amount,
+//         actualAmount: questions.length,
+//         difficulty: difficulty || "Medium",
+//         focus: focus || [],
+//         industry: industry || null,
+//         companySize: companySize || null,
+//         generatedBy: "AI",
+//         userAgent: clientInfo.userAgent,
+//         clientIP: clientInfo.ip !== 'unknown' ? clientInfo.ip : null,
+//         processingTime: Date.now() - startTime,
+//       },
+      
+//       // Additional fields
+//       estimatedDuration: Math.max(20, questions.length * 3), // 3 minutes per question minimum
+//       status: "active",
+//       tags: [type, level, ...techstack.split(",").map(t => t.trim()).slice(0, 3)],
+//     };
+
+//     // Save to database
+//     try {
+//       const docRef = await db.collection("interviews").add(interview);
+      
+//       // Log successful creation for analytics
+//       console.log("Interview created successfully:", {
+//         interviewId: docRef.id,
+//         role,
+//         type,
+//         level,
+//         questionsCount: questions.length,
+//         userid,
+//         processingTime: Date.now() - startTime,
+//       });
+
+//       const processingTime = Date.now() - startTime;
+      
+//       return createSuccessResponse({
+//         interviewId: docRef.id,
+//         questionsGenerated: questions.length,
+//         role: interview.role,
+//         type: interview.type,
+//         level: interview.level,
+//         estimatedDuration: interview.estimatedDuration,
+//         tags: interview.tags,
+//         previewQuestions: questions.slice(0, 2), // Show first 2 questions as preview
+//       }, `Successfully created ${type.toLowerCase()} interview for ${role} (${level} level)`, processingTime);
+      
+//     } catch (dbError: any) {
+//       console.error("Database Error:", {
+//         error: dbError.message,
+//         code: dbError.code,
+//         userid,
+//         timestamp: new Date().toISOString()
+//       });
+
+//       return createErrorResponse({
+//         code: 'DATABASE_ERROR',
+//         message: 'Failed to save interview',
+//         details: 'Database temporarily unavailable',
+//         suggestion: 'Please try again in a few moments'
+//       }, 503);
+//     }
+
+//   } catch (error: any) {
+//     console.error("Interview Generation Error:", {
+//       error: error.message,
+//       stack: error.stack,
+//       timestamp: new Date().toISOString(),
+//     });
+    
+//     return createErrorResponse({
+//       code: 'INTERNAL_ERROR',
+//       message: 'An unexpected error occurred',
+//       suggestion: 'Please try again or contact support if the problem persists'
+//     }, 500);
+//   }
+// }
+
+// // Fixed version of your API route with correct endpoint documentation
+// export async function GET() {
+//   const healthData = {
+//     service: "TheTruthSchool.ai Interview Generation API",
+//     version: APP_CONFIG.version,
+//     status: "operational",
+//     timestamp: new Date().toISOString(),
+    
+//     features: [
+//       "AI-powered question generation",
+//       "Multiple interview types",
+//       "Role-specific customization", 
+//       "Experience level targeting",
+//       "Tech stack optimization",
+//       "Difficulty adjustment",
+//       "Industry-specific questions",
+//       "Rate limiting protection"
+//     ],
+    
+//     configuration: {
+//       supportedTypes: ["Technical", "Behavioral", "Mixed", "System Design", "Coding"],
+//       supportedLevels: ["Entry", "Junior", "Mid", "Senior", "Staff", "Principal", "Director"],
+//       questionLimits: {
+//         min: APP_CONFIG.limits.minQuestionsPerInterview,
+//         max: APP_CONFIG.limits.maxQuestionsPerInterview
+//       },
+//       rateLimits: RATE_LIMITS,
+//     },
+    
+//     // Fixed: Use the correct path based on your file structure
+//     endpoints: {
+//       "POST /vapi/generate": "Generate new interview questions",
+//       "GET /vapi/generate": "API health check and documentation", 
+//       "HEAD /vapi/generate": "Service health check"
+//     }
+//   };
+
+//   return createSuccessResponse(healthData, "Interview Generation API is operational");
+// }
+
+// export async function HEAD() {
+//   return new Response(null, { 
+//     status: 200,
+//     headers: {
+//       'X-Service-Status': 'healthy',
+//       'X-Version': APP_CONFIG.version,
+//       'X-Last-Updated': new Date().toISOString(),
+//       'X-Rate-Limit-Window': RATE_LIMITS.windowMs.toString(),
+//       'X-Rate-Limit-Max': RATE_LIMITS.maxRequests.toString(),
+//     }
+//   });
+// }
+
+// export async function OPTIONS() {
+//   return new Response(null, {
+//     status: 200,
+//     headers: {
+//       'Access-Control-Allow-Origin': '*',
+//       'Access-Control-Allow-Methods': 'POST, GET, HEAD, OPTIONS',
+//       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+//       'Access-Control-Max-Age': '86400',
+//     }
+//   });
+// }
+
+// Updated /vapi/generate route with better error handling and debugging
+
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    // Get client information
-    const clientInfo = await getClientInfo(request);
-    const clientIP = getClientIP(request);
-
+    console.log('🚀 Interview generation request received');
+    
     // Parse and validate request body
     const jsonResult = await safeParseJSON(request);
     if (!jsonResult.success) {
+      console.error('❌ JSON parsing failed:', jsonResult.error);
       return createErrorResponse({
         code: 'INVALID_JSON',
         message: 'Invalid JSON in request body',
@@ -432,14 +700,17 @@ export async function POST(request: NextRequest) {
       }, 400);
     }
 
+    console.log('📋 Request data:', jsonResult.data);
+
     // Validate request schema
     const validation = validateRequest(InterviewRequestSchema, jsonResult.data);
     if (!validation.success) {
+      console.error('❌ Validation failed:', validation.details);
       return createErrorResponse({
         code: 'VALIDATION_ERROR',
         message: 'Invalid request data',
         details: validation.details,
-        suggestion: 'Check the API documentation for required fields and formats'
+        suggestion: 'Check the required fields: type, role, level, techstack, amount, userid'
       }, 400);
     }
 
@@ -456,20 +727,27 @@ export async function POST(request: NextRequest) {
       companySize 
     } = validation.data;
 
-    // Rate limiting
-    const rateLimitResult = await checkRateLimit(userid, clientIP);
-    if (!rateLimitResult.allowed) {
+    console.log('✅ Validation passed:', { type, role, level, amount, userid });
+
+    // Check Google AI API key
+    const googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!googleApiKey) {
+      console.error('❌ Google AI API key not found');
       return createErrorResponse({
-        code: 'RATE_LIMIT_EXCEEDED',
-        message: 'Too many requests. Please try again later.',
-        suggestion: 'Wait before making another request',
-        retryAfter: Math.ceil((rateLimitResult.resetTime! - Date.now()) / 1000)
-      }, 429);
+        code: 'AI_CONFIG_ERROR',
+        message: 'AI service configuration missing',
+        details: 'GOOGLE_GENERATIVE_AI_API_KEY not set',
+        suggestion: 'Set GOOGLE_GENERATIVE_AI_API_KEY in your environment variables'
+      }, 503);
     }
 
-    // Generate questions with AI
+    console.log('🔑 Google AI API key found:', googleApiKey.substring(0, 8) + '...');
+
+    // Generate questions with AI - FIXED MODEL NAME
     let questions: string[];
     try {
+      console.log('🧠 Starting AI question generation...');
+      
       const prompt = createInterviewPrompt({
         role, 
         level, 
@@ -482,31 +760,96 @@ export async function POST(request: NextRequest) {
         companySize
       });
       
-      const { text: questionsText } = await generateText({
-        model: google("gemini-2.0-flash-001"),
-        prompt,
-        maxTokens: 3000,
-        temperature: 0.7,
-        topP: 0.9,
-      });
+      console.log('📝 Prompt created, length:', prompt.length);
+      
+      // FIXED: Use working model name - try multiple models for reliability
+      const modelsToTry = [
+        "gemini-1.5-flash",      // Most reliable
+        "gemini-1.5-pro",        // Fallback 1
+        "gemini-pro",            // Fallback 2
+        "gemini-2.0-flash-001"   // Original (might not work)
+      ];
+
+      let questionsText = "";
+      let usedModel = "";
+      
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`🔗 Trying model: ${modelName}`);
+          
+          const result = await generateText({
+            model: google(modelName),
+            prompt,
+            maxTokens: 3000,
+            temperature: 0.7,
+            topP: 0.9,
+          });
+
+          questionsText = result.text;
+          usedModel = modelName;
+          console.log(`✅ Success with model: ${modelName}`);
+          break;
+          
+        } catch (modelError: any) {
+          console.warn(`⚠️ Model ${modelName} failed:`, modelError.message);
+          continue;
+        }
+      }
+
+      if (!questionsText) {
+        throw new Error("All AI models failed to generate questions");
+      }
+
+      console.log('✅ AI response received, length:', questionsText.length);
+      console.log('🤖 Used model:', usedModel);
 
       // Parse and validate AI response
       let parsedQuestions;
       try {
-        parsedQuestions = JSON.parse(questionsText);
-      } catch {
-        throw new Error("AI returned invalid JSON format");
+        // Clean the response - remove markdown formatting
+        const cleanedText = questionsText
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .replace(/^[^[{]*/, '') // Remove any text before JSON starts
+          .replace(/[^}\]]*$/, '') // Remove any text after JSON ends
+          .trim();
+        
+        console.log('🧹 Cleaned response preview:', cleanedText.substring(0, 200) + '...');
+        
+        parsedQuestions = JSON.parse(cleanedText);
+        console.log('✅ JSON parsing successful');
+      } catch (parseError: any) {
+        console.error('❌ JSON parsing failed:', parseError.message);
+        console.error('📄 Raw response:', questionsText.substring(0, 500));
+        
+        // Try to extract JSON from the response more aggressively
+        try {
+          const jsonMatch = questionsText.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            parsedQuestions = JSON.parse(jsonMatch[0]);
+            console.log('✅ Extracted JSON successfully');
+          } else {
+            throw new Error("No JSON array found in response");
+          }
+        } catch (extractError) {
+          throw new Error(`AI returned invalid JSON format. Raw response: ${questionsText.substring(0, 200)}...`);
+        }
       }
 
       if (!Array.isArray(parsedQuestions)) {
+        console.error('❌ AI response is not an array:', typeof parsedQuestions);
         throw new Error("AI response is not an array");
       }
 
+      console.log('📊 Parsed questions count:', parsedQuestions.length);
+      
       questions = validateAndEnhanceQuestions(parsedQuestions, amount, role);
+      console.log('✅ Questions validated, final count:', questions.length);
       
     } catch (aiError: any) {
-      console.error("AI Generation Error:", {
+      console.error("❌ AI Generation Error:", {
         error: aiError.message,
+        stack: aiError.stack,
         role,
         level,
         type,
@@ -514,15 +857,43 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       });
 
+      // More specific error handling
+      if (aiError.message?.includes('API_KEY') || aiError.message?.includes('401')) {
+        return createErrorResponse({
+          code: 'AI_AUTH_ERROR',
+          message: 'AI service authentication failed',
+          details: 'Invalid or missing Google AI API key',
+          suggestion: 'Verify your GOOGLE_GENERATIVE_AI_API_KEY at https://aistudio.google.com/app/apikey'
+        }, 503);
+      }
+
+      if (aiError.message?.includes('quota') || aiError.message?.includes('limit') || aiError.message?.includes('429')) {
+        return createErrorResponse({
+          code: 'AI_QUOTA_EXCEEDED',
+          message: 'AI service quota exceeded',
+          details: 'Google AI API quota or rate limit reached',
+          suggestion: 'Please try again later or check your API quota in Google AI Studio'
+        }, 503);
+      }
+
+      if (aiError.message?.includes('model') || aiError.message?.includes('404')) {
+        return createErrorResponse({
+          code: 'AI_MODEL_ERROR',
+          message: 'AI model not available',
+          details: 'The requested AI model is not accessible',
+          suggestion: 'Model may not be available in your region or account'
+        }, 503);
+      }
+
       return createErrorResponse({
         code: 'AI_GENERATION_FAILED',
         message: 'Failed to generate interview questions',
-        details: 'Our AI service is temporarily unavailable',
-        suggestion: 'Please try again in a few moments'
+        details: aiError.message || 'Unknown AI service error',
+        suggestion: 'Please try again in a few moments or contact support'
       }, 503);
     }
 
-    // Create enhanced interview object
+    // Create enhanced interview object (same as before)
     const interview = {
       role: role.trim(),
       type,
@@ -535,7 +906,6 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       
-      // Enhanced metadata
       metadata: {
         requestedAmount: amount,
         actualAmount: questions.length,
@@ -544,23 +914,21 @@ export async function POST(request: NextRequest) {
         industry: industry || null,
         companySize: companySize || null,
         generatedBy: "AI",
-        userAgent: clientInfo.userAgent,
-        clientIP: clientInfo.ip !== 'unknown' ? clientInfo.ip : null,
         processingTime: Date.now() - startTime,
       },
       
-      // Additional fields
-      estimatedDuration: Math.max(20, questions.length * 3), // 3 minutes per question minimum
+      estimatedDuration: Math.max(20, questions.length * 3),
       status: "active",
       tags: [type, level, ...techstack.split(",").map(t => t.trim()).slice(0, 3)],
     };
+
+    console.log('💾 Saving to database...');
 
     // Save to database
     try {
       const docRef = await db.collection("interviews").add(interview);
       
-      // Log successful creation for analytics
-      console.log("Interview created successfully:", {
+      console.log("✅ Interview created successfully:", {
         interviewId: docRef.id,
         role,
         type,
@@ -580,11 +948,11 @@ export async function POST(request: NextRequest) {
         level: interview.level,
         estimatedDuration: interview.estimatedDuration,
         tags: interview.tags,
-        previewQuestions: questions.slice(0, 2), // Show first 2 questions as preview
+        previewQuestions: questions.slice(0, 2),
       }, `Successfully created ${type.toLowerCase()} interview for ${role} (${level} level)`, processingTime);
       
     } catch (dbError: any) {
-      console.error("Database Error:", {
+      console.error("❌ Database Error:", {
         error: dbError.message,
         code: dbError.code,
         userid,
@@ -600,7 +968,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error("Interview Generation Error:", {
+    console.error("❌ Interview Generation Error:", {
       error: error.message,
       stack: error.stack,
       timestamp: new Date().toISOString(),
@@ -609,72 +977,61 @@ export async function POST(request: NextRequest) {
     return createErrorResponse({
       code: 'INTERNAL_ERROR',
       message: 'An unexpected error occurred',
+      details: error.message,
       suggestion: 'Please try again or contact support if the problem persists'
     }, 500);
   }
 }
 
-// Fixed version of your API route with correct endpoint documentation
+// Enhanced GET endpoint with model testing
 export async function GET() {
-  const healthData = {
-    service: "TheTruthSchool.ai Interview Generation API",
-    version: APP_CONFIG.version,
-    status: "operational",
-    timestamp: new Date().toISOString(),
+  try {
+    // Test which models are working
+    const workingModels = [];
+    const testModels = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
     
-    features: [
-      "AI-powered question generation",
-      "Multiple interview types",
-      "Role-specific customization", 
-      "Experience level targeting",
-      "Tech stack optimization",
-      "Difficulty adjustment",
-      "Industry-specific questions",
-      "Rate limiting protection"
-    ],
-    
-    configuration: {
-      supportedTypes: ["Technical", "Behavioral", "Mixed", "System Design", "Coding"],
-      supportedLevels: ["Entry", "Junior", "Mid", "Senior", "Staff", "Principal", "Director"],
-      questionLimits: {
-        min: APP_CONFIG.limits.minQuestionsPerInterview,
-        max: APP_CONFIG.limits.maxQuestionsPerInterview
+    for (const model of testModels) {
+      try {
+        await generateText({
+          model: google(model),
+          prompt: "Say hello",
+          maxTokens: 5,
+        });
+        workingModels.push(model);
+      } catch {
+        // Model doesn't work, skip
+      }
+    }
+
+    const healthData = {
+      service: "TheTruthSchool.ai Interview Generation API",
+      version: "2.0.0",
+      status: "operational",
+      timestamp: new Date().toISOString(),
+      
+      configuration: {
+        googleAI: {
+          configured: !!process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+          keyPreview: process.env.GOOGLE_GENERATIVE_AI_API_KEY?.substring(0, 8) + '...' || 'Not set',
+          workingModels: workingModels,
+          recommendedModel: workingModels[0] || 'none'
+        },
+        supportedTypes: ["Technical", "Behavioral", "Mixed", "System Design", "Coding"],
+        supportedLevels: ["Entry", "Junior", "Mid", "Senior", "Staff", "Principal", "Director"],
       },
-      rateLimits: RATE_LIMITS,
-    },
-    
-    // Fixed: Use the correct path based on your file structure
-    endpoints: {
-      "POST /vapi/generate": "Generate new interview questions",
-      "GET /vapi/generate": "API health check and documentation", 
-      "HEAD /vapi/generate": "Service health check"
-    }
-  };
+      
+      endpoints: {
+        "POST /vapi/generate": "Generate new interview questions",
+        "GET /vapi/generate": "API health check and documentation",
+      }
+    };
 
-  return createSuccessResponse(healthData, "Interview Generation API is operational");
-}
-
-export async function HEAD() {
-  return new Response(null, { 
-    status: 200,
-    headers: {
-      'X-Service-Status': 'healthy',
-      'X-Version': APP_CONFIG.version,
-      'X-Last-Updated': new Date().toISOString(),
-      'X-Rate-Limit-Window': RATE_LIMITS.windowMs.toString(),
-      'X-Rate-Limit-Max': RATE_LIMITS.maxRequests.toString(),
-    }
-  });
-}
-
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, GET, HEAD, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
-    }
-  });
+    return createSuccessResponse(healthData, "Interview Generation API is operational");
+  } catch (error: any) {
+    return createErrorResponse({
+      code: 'HEALTH_CHECK_FAILED',
+      message: 'Health check failed',
+      details: error.message
+    }, 503);
+  }
 }

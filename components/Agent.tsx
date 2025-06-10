@@ -1,4 +1,4 @@
-// components/Agent.tsx - FIXED VERSION with proper TypeScript types
+// Fixed Agent.tsx with proper error handling and URL construction
 "use client";
 
 import Image from "next/image";
@@ -6,11 +6,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { vapi, vapiUtils, setupVapiEventHandlers } from "@/lib/vapi.sdk";
+import { vapi, vapiUtils } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
 
-// Define all necessary types locally - using const assertion for better type inference
+// Types (keeping the same as before)
 const CallStatus = {
   INACTIVE: "INACTIVE",
   CONNECTING: "CONNECTING", 
@@ -23,29 +23,6 @@ const CallStatus = {
 
 type CallStatus = typeof CallStatus[keyof typeof CallStatus];
 
-const MessageRoleEnum = {
-  USER: "user",
-  SYSTEM: "system",
-  ASSISTANT: "assistant",
-} as const;
-
-type MessageRoleEnum = typeof MessageRoleEnum[keyof typeof MessageRoleEnum];
-
-// Helper function to convert MessageRoleEnum to string
-const convertRoleToString = (role: MessageRoleEnum): "user" | "system" | "assistant" => {
-  switch (role) {
-    case MessageRoleEnum.USER:
-      return "user";
-    case MessageRoleEnum.SYSTEM:
-      return "system";
-    case MessageRoleEnum.ASSISTANT:
-      return "assistant";
-    default:
-      return "user";
-  }
-};
-
-// TranscriptMessage interface
 interface TranscriptMessage {
   id: string;
   role: "user" | "system" | "assistant";
@@ -53,7 +30,6 @@ interface TranscriptMessage {
   timestamp: number;
 }
 
-// AgentProps interface
 interface AgentProps {
   userName: string;
   userId?: string;
@@ -84,14 +60,12 @@ const Agent = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if VAPI is ready
     if (!vapiUtils.isReady() || !vapi) {
       setError("VAPI not initialized. Please check your token configuration.");
       setCallStatus(CallStatus.ERROR);
       return;
     }
 
-    // Clear any previous error
     setError(null);
 
     const onCallStart = () => {
@@ -111,11 +85,23 @@ const Agent = ({
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage: TranscriptMessage = {
           id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          role: convertRoleToString(message.role),
+          role: message.role === "user" ? "user" : message.role === "assistant" ? "assistant" : "system",
           content: message.transcript || "",
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, newMessage]);
+      }
+
+      // Handle function call results for interview generation
+      if (message.type === "function-call-result" && type === "generate") {
+        console.log('📋 Function call result:', message);
+        if (message.functionCallResult?.result) {
+          // Interview was generated successfully
+          console.log('✅ Interview generated via workflow');
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 2000); // Give time for final message
+        }
       }
     };
 
@@ -133,13 +119,19 @@ const Agent = ({
       console.error("❌ VAPI Error:", error);
       setError(error.message);
       
-      if (error.message?.includes('Unauthorized') || error.message?.includes('401')) {
+      // Enhanced error handling
+      if (error.message?.includes('405') || error.message?.includes('Method Not Allowed')) {
+        setError('API endpoint error. Please check your workflow configuration.');
+      } else if (error.message?.includes('Unauthorized') || error.message?.includes('401')) {
         setError('Authentication failed. Please check your VAPI token.');
-        setCallStatus(CallStatus.ERROR);
+      } else if (error.message?.includes('Unexpected end of JSON input')) {
+        setError('Server response error. Please try again.');
       }
+      
+      setCallStatus(CallStatus.ERROR);
     };
 
-    // Setup event handlers - VAPI is guaranteed to be non-null here
+    // Setup event handlers
     vapi.on("call-start", onCallStart);
     vapi.on("call-end", onCallEnd);
     vapi.on("message", onMessage);
@@ -148,7 +140,6 @@ const Agent = ({
     vapi.on("error", onError);
 
     return () => {
-      // Cleanup - check if vapi is still available
       if (vapi) {
         vapi.off("call-start", onCallStart);
         vapi.off("call-end", onCallEnd);
@@ -158,7 +149,7 @@ const Agent = ({
         vapi.off("error", onError);
       }
     };
-  }, []);
+  }, [type, router]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -197,7 +188,8 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        router.push("/dashboard");
+        // For generate type, the workflow handles navigation
+        console.log("✅ Interview generation completed");
       } else {
         handleGenerateFeedback(messages);
       }
@@ -215,18 +207,30 @@ const Agent = ({
       setError(null);
 
       if (type === "generate") {
+        // FIXED: Ensure we're passing the workflow ID as a string
         const workflowId = process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID;
+        
         if (!workflowId) {
-          throw new Error("VAPI Workflow ID is not configured");
+          throw new Error("VAPI Workflow ID is not configured. Please set NEXT_PUBLIC_VAPI_WORKFLOW_ID in your environment variables.");
         }
 
+        console.log('🔄 Starting workflow call with ID:', workflowId);
+        
+        // FIXED: Ensure all variable values are strings/primitives
+        const variableValues = {
+          username: String(userName || ''),
+          userid: String(userId || ''),
+        };
+
+        console.log('📋 Sending variables:', variableValues);
+
+        // Use the workflow ID directly as a string
         await vapiUtils.startCall(workflowId, {
-          variableValues: {
-            username: userName,
-            userid: userId,
-          },
+          variableValues: variableValues,
         });
+        
       } else {
+        // For interview type, use the assistant configuration
         let formattedQuestions = "";
         if (questions && questions.length > 0) {
           formattedQuestions = questions
@@ -244,7 +248,19 @@ const Agent = ({
       console.log("✅ Call started successfully");
     } catch (error: any) {
       console.error("❌ Error starting call:", error);
-      setError(error.message);
+      
+      // Enhanced error handling
+      let errorMessage = error.message;
+      
+      if (error.message?.includes('405')) {
+        errorMessage = 'Server endpoint error. Please check your API configuration.';
+      } else if (error.message?.includes('Workflow not found')) {
+        errorMessage = 'Workflow not found. Please check your NEXT_PUBLIC_VAPI_WORKFLOW_ID.';
+      } else if (error.message?.includes('Unauthorized')) {
+        errorMessage = 'Authentication failed. Please check your VAPI token.';
+      }
+      
+      setError(errorMessage);
       setCallStatus(CallStatus.INACTIVE);
     }
   };
@@ -260,7 +276,7 @@ const Agent = ({
     }
   };
 
-  // Helper function to check if call can be started
+  // Helper functions (same as before)
   const canStartCall = (): boolean => {
     return (
       vapiUtils.isReady() && 
@@ -269,12 +285,10 @@ const Agent = ({
     );
   };
 
-  // Helper function to check if call is active
   const isCallActive = (): boolean => {
     return callStatus === CallStatus.ACTIVE;
   };
 
-  // Helper function to check if there's an error state
   const hasError = (): boolean => {
     return callStatus === CallStatus.ERROR;
   };
@@ -290,15 +304,21 @@ const Agent = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-red-400 mb-2">VAPI Configuration Error</h3>
+            <h3 className="text-red-400 mb-2">Configuration Error</h3>
             <p className="text-white/60 text-sm text-center mb-4">
               {error || "VAPI is not properly configured"}
             </p>
-            <div className="text-xs text-white/40 text-center">
-              <p>Please check your .env.local file:</p>
-              <code className="bg-black/30 px-2 py-1 rounded mt-1 inline-block">
-                NEXT_PUBLIC_VAPI_WEB_TOKEN=your-token-here
-              </code>
+            <div className="text-xs text-white/40 text-center space-y-2">
+              <p>Please check your environment variables:</p>
+              <div className="bg-black/30 p-3 rounded text-left">
+                <code className="block">NEXT_PUBLIC_VAPI_WEB_TOKEN=pk-...</code>
+                <code className="block">NEXT_PUBLIC_VAPI_WORKFLOW_ID=your-workflow-id</code>
+              </div>
+              {type === "generate" && (
+                <p className="text-yellow-400">
+                  Make sure your workflow ID is correct and the workflow is published in VAPI dashboard.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -312,7 +332,7 @@ const Agent = ({
         {/* AI Interviewer Card */}
         <div className="card-interviewer">
           <div className="avatar">
-          <Image
+            <Image
               src="/ai-avatar.png"
               alt="AI Interviewer profile"
               width={65}
@@ -331,7 +351,7 @@ const Agent = ({
         {/* User Profile Card */}
         <div className="card-border">
           <div className="card-content">
-          <Image
+            <Image
               src="/user-avatar.png"
               alt={`${userName}'s profile`}
               width={120}
@@ -393,10 +413,12 @@ const Agent = ({
 
             <span className="relative">
               {callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED
-                ? "Start Interview"
+                ? type === "generate" 
+                  ? "Start Interview Creation"
+                  : "Start Interview"
                 : callStatus === CallStatus.CONNECTING
                 ? "Connecting..."
-                : "Start Interview"}
+                : "Start"}
             </span>
           </button>
         ) : (
@@ -404,7 +426,7 @@ const Agent = ({
             className="btn-disconnect" 
             onClick={handleDisconnect}
           >
-            End Interview
+            End Session
           </button>
         )}
       </div>
