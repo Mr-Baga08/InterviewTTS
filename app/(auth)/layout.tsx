@@ -34,7 +34,7 @@ const AuthLayout = async ({ children }: { children: ReactNode }) => {
       {/* Content container */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-8">
         {/* Main content wrapper */}
-        <div className="w-full max-w-md">
+        <div className="w-full flex max-w-md">
           {/* Apple-style glassmorphic container */}
           <div className="apple-glass apple-shadow-lg rounded-3xl p-8 backdrop-blur-2xl border border-white/10">
             {/* Subtle inner glow */}
@@ -47,22 +47,44 @@ const AuthLayout = async ({ children }: { children: ReactNode }) => {
           </div>
           
           {/* Apple-style footer text */}
-          <div className="mt-8 text-center">
+          {/* <div className="mt-8 text-center">
             <p className="text-white/60 text-sm font-medium">
               Designed for the future of interview preparation
             </p>
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* Decorative elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         {/* Floating particles */}
-        <div className="absolute top-20 left-20 w-1 h-1 bg-white/20 rounded-full animate-float" />
-        <div className="absolute top-40 right-32 w-1.5 h-1.5 bg-purple-400/30 rounded-full animate-float delay-300" />
-        <div className="absolute bottom-32 left-16 w-1 h-1 bg-blue-400/25 rounded-full animate-float delay-700" />
-        <div className="absolute bottom-20 right-20 w-1 h-1 bg-white/15 rounded-full animate-float delay-1000" />
-        
+        <div className="absolute top-20 left-20 w-5 h-5 bg-white/20 rounded-full animate-float" />
+        <div className="absolute top-40 right-32 w-4 h-4 bg-purple-400/30 rounded-full animate-float delay-300" />
+        <div className="absolute bottom-32 left-16 w-5 h-5 bg-blue-400/25 rounded-full animate-float delay-700" />
+        <div className="absolute bottom-50 right-2 w-7 h-7 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-40 right-20 w-6 h-6 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-30 right-20 w-3 h-3 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-10 right-20 w-2 h-2 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-20 right-26 w-6 h-6 bg-purple-400/30 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-20 right-30 w-2 h-2 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-20 right-40 w-6 h-6 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-20 right-50 w-5 h-5 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-20 right-60 w-4 h-4 bg-purple-400/30 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-50 right-25 w-6 h-6 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-60 right-35 w-3 h-3 bg-purple-400/30 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-70 right-30 w-2 h-2 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-80 right-50 w-6 h-6 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-90 right-60 w-3 h-3 bg-purple-400/30 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-55 right-65 w-2 h-2 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-45 right-85 w-6 h-6 bg-purple-400/30 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-35 right-5 w-3 h-3 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-15 right-10 w-2 h-2 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-45 right-45 w-6 h-6 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-35 right-33 w-3 h-3 bg-white/15 rounded-full animate-float delay-1000" />
+        <div className="absolute bottom-15 right-44 w-2 h-2 bg-white/15 rounded-full animate-float delay-1000" />
+
+
+
         {/* Grid pattern overlay */}
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
       </div>

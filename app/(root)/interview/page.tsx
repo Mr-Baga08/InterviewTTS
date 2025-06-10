@@ -137,7 +137,7 @@ const Page = async () => {
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-indigo-500/5 rounded-2xl -z-10" />
             
             {/* Content wrapper with error boundary */}
-            <div className="relative z-10">
+            <div className="relative z-105">
               <Suspense fallback={<AgentLoadingSkeleton />}>
                 <Agent
                   userName={user.name}

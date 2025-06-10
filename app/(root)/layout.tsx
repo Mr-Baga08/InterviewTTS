@@ -1,10 +1,9 @@
-// app/(root)/layout.tsx - FIXED VERSION
-import Link from "next/link";
-import Image from "next/image";
+// app/(root)/layout.tsx - Updated with Enhanced Navbar
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
-
+import { signOut } from "@/lib/actions/auth.action";
 import { getCurrentUser } from "@/lib/actions/auth.action";
+import AppleNavbar from "@/components/AppleNavbar";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const user = await getCurrentUser();
@@ -17,94 +16,51 @@ const Layout = async ({ children }: { children: ReactNode }) => {
 
   console.log("🔥 RootLayout: User authenticated, rendering protected layout");
 
+  // Server action to handle sign out
+  const handleSignOut = async () => {
+    "use server";
+    await signOut();
+    redirect("/sign-in");
+  };
+
   return (
-    <div className="apple-root-layout">
-      {/* Apple-style Navigation Bar */}
-      <nav className="apple-navbar">
-        <div className="apple-navbar-content">
-          {/* Logo and Brand */}
-          <Link href="/dashboard" className="apple-brand-link group">
-            <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-105">
-                <Image 
-                  src="/logo.svg" 
-                  alt="TheTruthSchool Logo" 
-                  width={24} 
-                  height={20}
-                  className="filter brightness-0 invert"
-                />
-              </div>
-              {/* Hover glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-600 rounded-xl blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-300 -z-10" />
-            </div>
-            <div className="brand-text">
-              <h2 className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-blue-200 group-hover:to-purple-200 transition-all duration-300">
-              TheTruthSchool
-              </h2>
-              <p className="text-xs text-white/50 font-medium hidden sm:block">AI Interview Prep</p>
-            </div>
-          </Link>
+    <div className="apple-root-layout min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      {/* Enhanced Apple-style Navigation Bar */}
+      <AppleNavbar 
+        user={{
+          name: user.name,
+          avatar: user.avatar
+        }}
+        onSignOut={handleSignOut}
+      />
 
-          {/* Navigation Menu */}
-          <div className="apple-nav-menu">
-            <Link href="/dashboard" className="apple-nav-item group">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span className="nav-text">Dashboard</span>
-              <div className="apple-nav-indicator" />
-            </Link>
-
-            <Link href="/interview" className="apple-nav-item group">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="nav-text">Create Interview</span>
-              <div className="apple-nav-indicator" />
-            </Link>
-
-            <div className="apple-nav-divider" />
-
-            {/* User Profile Button */}
-            <button className="apple-profile-button group">
-              <div className="w-8 h-8 bg-gradient-to-br from-white/20 to-white/10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:from-white/30 group-hover:to-white/20">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <span className="sr-only">User Profile</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Glassmorphic background */}
-        <div className="apple-navbar-bg" />
-      </nav>
-
-      {/* Main Content Area */}
-      <main className="apple-main-content">
-        {/* Content wrapper with proper spacing */}
-        <div className="apple-content-wrapper">
+      {/* Main Content Area with proper spacing */}
+      <main className="pt-16 min-h-screen">
+        {/* Content wrapper with enhanced styling */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children}
         </div>
 
-        {/* Background Elements */}
-        <div className="apple-bg-elements">
-          {/* Animated gradient orbs */}
-          <div className="apple-bg-orb apple-bg-orb-1" />
-          <div className="apple-bg-orb apple-bg-orb-2" />
-          <div className="apple-bg-orb apple-bg-orb-3" />
+        {/* Enhanced Background Elements */}
+        <div className="fixed inset-0 -z-50 overflow-hidden pointer-events-none">
+          {/* Primary gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-indigo-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-black transition-colors duration-500" />
+          
+          {/* Animated gradient orbs for depth */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-500/5 to-purple-500/5 dark:from-blue-500/10 dark:to-purple-500/10 rounded-full blur-3xl animate-apple-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-to-r from-purple-500/5 to-indigo-500/5 dark:from-purple-500/10 dark:to-indigo-500/10 rounded-full blur-3xl animate-apple-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-indigo-500/3 to-cyan-500/3 dark:from-indigo-500/5 dark:to-cyan-500/5 rounded-full blur-2xl animate-apple-pulse" style={{ animationDelay: '4s' }} />
           
           {/* Grid pattern overlay */}
-          <div className="apple-grid-pattern" />
+          <div className="absolute inset-0 bg-grid-pattern opacity-[0.01] dark:opacity-[0.02]" />
         </div>
       </main>
 
       {/* Status Bar for iOS-like experience */}
-      <div className="apple-status-indicator">
-        <div className="flex items-center gap-2">
+      <div className="fixed bottom-4 right-4 z-30 hidden lg:flex">
+        <div className="flex items-center gap-2 px-3 py-2 bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-gray-200/50 dark:border-white/10 rounded-full shadow-lg">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          <span className="text-xs text-white/60 font-medium">AI Ready</span>
+          <span className="text-xs text-gray-600 dark:text-white/60 font-medium">AI Ready</span>
         </div>
       </div>
     </div>
