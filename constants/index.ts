@@ -235,7 +235,7 @@ export const APP_CONFIG = {
   },
   ai: {
     model: "gemini-2.0-flash-001",
-    maxTokens: 3000,
+    maxTokens: 30000,
     temperature: 0.7,
     topP: 0.9,
   }
