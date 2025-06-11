@@ -1,175 +1,207 @@
-// lib/livekit/agent/session.ts - Fixed LiveKit Session
-import { 
-    Room, 
-    RoomEvent, 
-    RemoteAudioTrack, 
-    LocalAudioTrack,
-    TrackPublication,
-    Participant,
+// lib/livekit/agent/session.ts - Corrected LiveKit Agent Session
+import {
+    Room,
+    RoomEvent,
+    RemoteTrack,
+    RemoteParticipant,
+    RemoteTrackPublication,
     Track,
     ConnectionState,
-    RoomOptions,
-    AudioCaptureOptions
-  } from 'livekit-client';
-  
-  import { 
-    RoomServiceClient, 
-    AccessToken
-  } from 'livekit-server-sdk';
-  
-  export interface InterviewSessionConfig {
+    LocalAudioTrack,
+    createLocalAudioTrack
+} from 'livekit-client';
+import { OpusEncoder } from '@discordjs/opus';
+import { createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+
+// A simple in-memory store for our audio buffers
+const audioBuffer = new Map<string, Buffer>();
+
+export interface InterviewSessionConfig {
     interviewId?: string;
     userId: string;
     userName: string;
     questions: string[];
     interviewType: 'technical' | 'behavioral' | 'mixed';
     systemPrompt?: string;
-  }
-  
-  export class InterviewAgentSession {
+}
+
+export class InterviewAgentSession {
     private room: Room;
     private config: InterviewSessionConfig;
     private currentQuestionIndex = 0;
     private messages: Array<{
-      id: string;
-      role: 'user' | 'assistant' | 'system';
-      content: string;
-      timestamp: number;
+        role: 'user' | 'assistant' | 'system';
+        content: string;
     }> = [];
-    
+
     private isProcessing = false;
-    private audioContext?: AudioContext;
-    private mediaRecorder?: MediaRecorder;
-    private audioChunks: Blob[] = [];
     private localAudioTrack?: LocalAudioTrack;
-  
+    private remoteAudioTrack?: RemoteTrack;
+    private encoder: OpusEncoder;
+
     constructor(room: Room, config: InterviewSessionConfig) {
-      this.room = room;
-      this.config = config;
-      this.setupRoomEvents();
+        this.room = room;
+        this.config = config;
+        this.encoder = new OpusEncoder(48000, 2); // Recommended settings for LiveKit
+        this.setupRoomEvents();
+
+        // Initialize with a system prompt
+        if (config.systemPrompt) {
+            this.messages.push({ role: 'system', content: config.systemPrompt });
+        }
     }
-  
+
     async start(): Promise<void> {
-      console.log('🚀 Starting Interview Agent Session...');
-      
-      try {
-        // Setup audio capture with correct API
-        await this.setupAudioCapture();
-        
-        // Send welcome message
-        await this.sendWelcomeMessage();
-        
-        console.log('✅ Agent session started successfully');
-        
-      } catch (error) {
-        console.error('❌ Failed to start agent session:', error);
-        throw error;
-      }
+        console.log('🚀 Starting Interview Agent Session...');
+        try {
+            await this.sendWelcomeMessage();
+            console.log('✅ Agent session started successfully.');
+        } catch (error) {
+            console.error('❌ Failed to start agent session:', error);
+            throw error;
+        }
     }
-  
+
     private setupRoomEvents(): void {
-      this.room.on(RoomEvent.ParticipantConnected, (participant: Participant) => {
-        console.log(`👤 Participant joined: ${participant.identity}`);
-        if (participant.identity !== 'interview-agent') {
-          this.handleParticipantJoined(participant);
-        }
-      });
-  
-      this.room.on(RoomEvent.ParticipantDisconnected, (participant: Participant) => {
-        console.log(`👤 Participant left: ${participant.identity}`);
-        if (participant.identity !== 'interview-agent') {
-          this.handleParticipantLeft(participant);
-        }
-      });
-  
-      this.room.on(RoomEvent.TrackSubscribed, (
-        track: RemoteAudioTrack, 
-        publication: TrackPublication, 
-        participant: Participant
-      ) => {
-        if (track.kind === Track.Kind.Audio && participant.identity !== 'interview-agent') {
-          console.log('🎤 User audio track subscribed');
-          this.handleUserAudioTrack(track);
-        }
-      });
-  
-      this.room.on(RoomEvent.DataReceived, (
-        payload: Uint8Array, 
-        participant?: Participant
-      ) => {
-        if (participant && participant.identity !== 'interview-agent') {
-          this.handleDataReceived(payload, participant);
-        }
-      });
-  
-      this.room.on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
-        console.log('📶 Connection state changed:', state);
-      });
-    }
-  
-    private async setupAudioCapture(): Promise<void> {
-      try {
-        // Create audio context for processing
-        this.audioContext = new AudioContext({ sampleRate: 16000 });
-        
-        // Create local audio track for the agent with correct API
-        const audioTrack = await LocalAudioTrack.create({
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 16000,
-          channelCount: 1,
-        } as AudioCaptureOptions);
-  
-        // Publish the agent's audio track with correct API
-        await this.room.localParticipant.publishTrack(audioTrack, {
-          name: 'agent-audio',
-          source: Track.Source.Microphone,
+        this.room.on(
+            RoomEvent.TrackSubscribed,
+            (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+                if (track.kind === Track.Kind.Audio && participant.identity === this.config.userId) {
+                    console.log('🎤 User audio track subscribed');
+                    this.remoteAudioTrack = track;
+                    this.handleUserAudio();
+                }
+            }
+        );
+
+        this.room.on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
+            console.log('📶 Agent connection state changed:', state);
         });
-  
-        this.localAudioTrack = audioTrack;
-        console.log('✅ Agent audio capture setup complete');
-        
-      } catch (error) {
-        console.error('❌ Failed to setup audio capture:', error);
-        throw error;
-      }
     }
-  
-    private async handleUserAudioTrack(track: RemoteAudioTrack): Promise<void> {
-      try {
-        // Attach the track to get the MediaStream
-        const element = track.attach() as HTMLAudioElement;
+
+    private handleUserAudio(): void {
+        if (!this.remoteAudioTrack) return;
+
+        // This event fires whenever a new audio frame is received from the user
+        this.remoteAudioTrack.on('audioFrame', async (frame: { data: any; }) => {
+            if (this.isProcessing) {
+                // Don't process new audio while the agent is "thinking" or "speaking"
+                return;
+            }
+            
+            // Here, you would implement Voice Activity Detection (VAD)
+            // For simplicity, we'll start processing on any frame and use a timeout.
+            // A more robust solution would buffer audio and wait for a pause.
+            
+            // For now, let's assume we capture a short segment and process it.
+            // This is a simplified stand-in for a full VAD + buffering implementation.
+            this.isProcessing = true; // Lock processing
+            
+            console.log('🔊 Received audio frame from user. Processing...');
+            
+            // In a real app, you'd buffer frames into a complete audio clip
+            const pcmBuffer = Buffer.from(frame.data); // This is raw PCM data
+            
+            // 1. Process with STT
+            const transcript = await this.processSTT(pcmBuffer);
+
+            if (transcript && transcript.trim().length > 0) {
+                console.log(`📝 User said: "${transcript}"`);
+                this.messages.push({ role: 'user', content: transcript });
+
+                // 2. Get LLM response
+                const llmResponse = await this.processLLM(this.messages);
+                console.log(`🤖 AI Response: "${llmResponse}"`);
+                this.messages.push({ role: 'assistant', content: llmResponse });
+
+                // 3. Get TTS audio
+                const ttsAudioBuffer = await this.processTTS(llmResponse);
+
+                // 4. Play TTS audio back into the room
+                await this.playAudioInRoom(ttsAudioBuffer);
+            }
+            
+            this.isProcessing = false; // Unlock processing
+        });
+    }
+
+    private async sendWelcomeMessage(): Promise<void> {
+        this.isProcessing = true;
+        const welcomeText = `Hello ${this.config.userName}. Welcome to your ${this.config.interviewType} interview. Are you ready to begin?`;
+        this.messages.push({ role: 'assistant', content: welcomeText });
         
-        if (element && element.srcObject instanceof MediaStream) {
-          // Setup speech recognition on the user's audio
-          await this.setupSpeechRecognition(element.srcObject);
+        console.log(`🤖 Sending Welcome: "${welcomeText}"`);
+        const audioBuffer = await this.processTTS(welcomeText);
+        await this.playAudioInRoom(audioBuffer);
+        this.isProcessing = false;
+    }
+    
+    private async playAudioInRoom(audioBuffer: Buffer): Promise<void> {
+        if (!this.localAudioTrack) {
+            this.localAudioTrack = await createLocalAudioTrack({
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false,
+            });
+            await this.room.localParticipant.publishTrack(this.localAudioTrack);
         }
-        
-      } catch (error) {
-        console.error('❌ Error handling user audio track:', error);
-      }
+    
+        // This is a simplified way to push raw audio.
+        // For continuous streaming, you'd need a more robust buffer management system.
+        // The `captureStream` on the track expects raw PCM data.
+        // We assume the TTS service provides compatible audio.
+        await this.localAudioTrack.pushAudioFrame(new Int16Array(audioBuffer));
+        console.log('🔊 Played AI audio response in room.');
     }
-  
-    private async setupSpeechRecognition(stream: MediaStream): Promise<void> {
-      try {
-        // Use MediaRecorder for audio capture and send to external STT
-        await this.setupMediaRecorderSTT(stream);
-        
-      } catch (error) {
-        console.error('❌ Failed to setup speech recognition:', error);
-      }
+
+    // --- AI Pipeline Methods ---
+
+    private async processSTT(audioBuffer: Buffer): Promise<string> {
+        // This makes a call to your Next.js API route for STT
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/stt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/octet-stream' },
+                body: audioBuffer,
+            });
+            const data = await response.json();
+            return data.transcript || '';
+        } catch (error) {
+            console.error('❌ STT API error:', error);
+            return '';
+        }
     }
-  
-    private async setupMediaRecorderSTT(stream: MediaStream): Promise<void> {
-      // Check if MediaRecorder supports the desired format
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/wav'
-      ];
-  
-      let selectedMimeType = '';
-      for (const mimeType of mimeTypes) {
-        if
+
+    private async processLLM(messages: any[]): Promise<string> {
+        // This makes a call to your Next.js API route for LLM
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/llm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages }),
+            });
+            const data = await response.json();
+            return data.response || 'I am sorry, I had an issue processing that.';
+        } catch (error) {
+            console.error('❌ LLM API error:', error);
+            return 'I am unable to respond right now.';
+        }
+    }
+
+    private async processTTS(text: string): Promise<Buffer> {
+        // This makes a call to your Next.js API route for TTS
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
+            });
+            const audioArrayBuffer = await response.arrayBuffer();
+            return Buffer.from(audioArrayBuffer);
+        } catch (error) {
+            console.error('❌ TTS API error:', error);
+            return Buffer.alloc(0); // Return empty buffer on error
+        }
+    }
+}
