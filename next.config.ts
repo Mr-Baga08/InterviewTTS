@@ -14,6 +14,48 @@ const nextConfig: NextConfig = {
     serverComponentsExternalPackages: ["firebase-admin"],
   },
 
+  // Fix for Node.js polyfills in client
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Fix Buffer polyfill issues
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        buffer: false, // Disable Node.js Buffer polyfill
+        crypto: false,
+        stream: false,
+        assert: false,
+        http: false,
+        https: false,
+        os: false,
+        url: false,
+        zlib: false,
+      };
+    }
+
+    // Add custom webpack config if needed
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ["@svgr/webpack"],
+    });
+
+    // Optimize bundle splitting
+    if (!dev && !isServer) {
+      config.optimization.splitChunks = {
+        chunks: "all",
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: "vendors",
+            priority: 10,
+            enforce: true,
+          },
+        },
+      };
+    }
+
+    return config;
+  },
+
   // Enhanced caching configuration
   async headers() {
     return [
@@ -64,32 +106,6 @@ const nextConfig: NextConfig = {
       },
     ],
     formats: ["image/webp", "image/avif"],
-  },
-
-  // Webpack configuration for better performance
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Add custom webpack config if needed
-    config.module.rules.push({
-      test: /\.svg$/,
-      use: ["@svgr/webpack"],
-    });
-
-    // Optimize bundle splitting
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: "all",
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: "vendors",
-            priority: 10,
-            enforce: true,
-          },
-        },
-      };
-    }
-
-    return config;
   },
 
   // Enhanced build output configuration

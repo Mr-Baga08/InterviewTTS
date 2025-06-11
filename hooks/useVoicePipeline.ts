@@ -1,5 +1,21 @@
-// hooks/useVoicePipeline.ts - Complete Voice Pipeline Integration
+// hooks/useVoicePipeline.ts - Updated with Enhanced Rate Limiting
 import { useState, useEffect, useRef, useCallback } from 'react';
+
+interface EnhancedSTTResponse {
+  success: boolean;
+  transcript?: string;
+  confidence?: number;
+  provider?: string;
+  error?: string;
+  code?: string;
+  suggestion?: string;
+  retryAfter?: number;
+  providerStatus?: Array<{
+    name: string;
+    available: boolean;
+    rateLimit: { remaining: number; resetTime: number };
+  }>;
+}
 
 interface VoicePipelineConfig {
   interviewType?: 'technical' | 'behavioral' | 'mixed';
@@ -8,9 +24,15 @@ interface VoicePipelineConfig {
   silenceTimeout?: number;
   maxRecordingTime?: number;
   providers?: {
-    stt?: 'whisper' | 'deepgram';
+    stt?: 'whisper' | 'deepgram' | 'basic';
     llm?: 'openai' | 'anthropic';
     tts?: 'openai' | 'elevenlabs' | 'coqui';
+  };
+  rateLimiting?: {
+    enabled: boolean;
+    maxRetries: number;
+    baseDelay: number;
+    maxDelay: number;
   };
 }
 
@@ -20,6 +42,11 @@ interface VoiceMessage {
   content: string;
   timestamp: number;
   audioUrl?: string;
+  metadata?: {
+    provider?: string;
+    confidence?: number;
+    processingTime?: number;
+  };
 }
 
 interface VoicePipelineState {
@@ -37,6 +64,20 @@ interface VoicePipelineState {
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
 }
 
+interface RateLimitState {
+  isRateLimited: boolean;
+  retryAfter: number;
+  requestCount: number;
+  lastResetTime: number;
+  failedAttempts: number;
+  providerStatus: Array<{
+    name: string;
+    available: boolean;
+    remaining: number;
+    resetTime: number;
+  }>;
+}
+
 interface VoicePipelineActions {
   startListening: () => Promise<void>;
   stopListening: () => Promise<void>;
@@ -45,11 +86,14 @@ interface VoicePipelineActions {
   clearError: () => void;
   resetConversation: () => void;
   sendMessage: (text: string) => Promise<void>;
+  retryLastRequest: () => Promise<void>;
 }
 
 interface VoicePipelineReturn extends VoicePipelineState, VoicePipelineActions {
   canStartListening: boolean;
   isActive: boolean;
+  rateLimitState: RateLimitState;
+  canMakeRequest: boolean;
   progress?: {
     current: number;
     total: number;
@@ -58,7 +102,7 @@ interface VoicePipelineReturn extends VoicePipelineState, VoicePipelineActions {
 }
 
 export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelineReturn {
-  // Configuration
+  // Configuration with enhanced defaults
   const {
     interviewType = 'mixed',
     questions = [],
@@ -69,6 +113,12 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
       stt: 'whisper',
       llm: 'openai',
       tts: 'openai'
+    },
+    rateLimiting = {
+      enabled: true,
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 10000
     }
   } = config;
 
@@ -88,6 +138,15 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
     connectionStatus: 'disconnected'
   });
 
+  const [rateLimitState, setRateLimitState] = useState<RateLimitState>({
+    isRateLimited: false,
+    retryAfter: 0,
+    requestCount: 0,
+    lastResetTime: Date.now(),
+    failedAttempts: 0,
+    providerStatus: []
+  });
+
   // Refs
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -98,11 +157,346 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastRequestRef = useRef<{ audio: string; action: string } | null>(null);
 
   // Update state helper
   const updateState = useCallback((updates: Partial<VoicePipelineState>) => {
     setState(prev => ({ ...prev, ...updates }));
   }, []);
+
+  // Enhanced rate limit checking
+  const checkRateLimit = useCallback(() => {
+    if (!rateLimiting.enabled) return true;
+
+    const now = Date.now();
+    const MINUTE = 60 * 1000;
+    const MAX_REQUESTS_PER_MINUTE = 30; // Reduced from 50
+    
+    // Reset counter every minute
+    if (now - rateLimitState.lastResetTime > MINUTE) {
+      setRateLimitState(prev => ({
+        ...prev,
+        requestCount: 0,
+        lastResetTime: now,
+        isRateLimited: false,
+        failedAttempts: 0
+      }));
+      return true;
+    }
+    
+    // Check if we're at the limit
+    if (rateLimitState.requestCount >= MAX_REQUESTS_PER_MINUTE) {
+      const timeUntilReset = MINUTE - (now - rateLimitState.lastResetTime);
+      setRateLimitState(prev => ({
+        ...prev,
+        isRateLimited: true,
+        retryAfter: Math.ceil(timeUntilReset / 1000)
+      }));
+      return false;
+    }
+    
+    return true;
+  }, [rateLimitState, rateLimiting.enabled]);
+
+  // Enhanced pipeline request with better error handling
+  const makeVoicePipelineRequest = useCallback(async (
+    audio: string,
+    action: 'stt' | 'llm' | 'tts' | 'pipeline' = 'stt',
+    attempt: number = 1
+  ): Promise<any> => {
+    // Store request for potential retry
+    lastRequestRef.current = { audio, action };
+
+    // Check rate limit before making request
+    if (!checkRateLimit()) {
+      updateState({
+        error: `Rate limit exceeded. Please wait ${rateLimitState.retryAfter} seconds.`,
+        isProcessing: false
+      });
+      return null;
+    }
+
+    try {
+      updateState({ isProcessing: true, error: null });
+      
+      // Increment request count
+      setRateLimitState(prev => ({
+        ...prev,
+        requestCount: prev.requestCount + 1
+      }));
+
+      const response = await fetch('/api/voice/pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          audio,
+          format: 'webm',
+          language: 'en',
+          context: state.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp
+          })),
+          interviewConfig: {
+            type: interviewType,
+            questions,
+            currentIndex: state.currentQuestionIndex
+          },
+          provider: providers
+        })
+      });
+
+      const data = await response.json();
+      
+      // Handle rate limit responses
+      if (response.status === 429) {
+        const retryAfter = data.retryAfter || 60;
+        setRateLimitState(prev => ({
+          ...prev,
+          isRateLimited: true,
+          retryAfter,
+          failedAttempts: prev.failedAttempts + 1,
+          providerStatus: data.providerStatus || []
+        }));
+        
+        updateState({
+          error: `Rate limit exceeded. ${data.suggestion || `Try again in ${retryAfter} seconds.`}`,
+          isProcessing: false
+        });
+        
+        // Auto-retry with exponential backoff if enabled
+        if (rateLimiting.enabled && attempt < rateLimiting.maxRetries) {
+          const backoffDelay = Math.min(
+            rateLimiting.baseDelay * Math.pow(2, attempt - 1),
+            rateLimiting.maxDelay
+          );
+          
+          console.log(`🔄 Auto-retrying in ${backoffDelay}ms (attempt ${attempt + 1}/${rateLimiting.maxRetries})`);
+          
+          setTimeout(() => {
+            makeVoicePipelineRequest(audio, action, attempt + 1);
+          }, backoffDelay);
+        }
+        
+        return null;
+      }
+
+      // Handle other errors
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Pipeline request failed');
+      }
+
+      // Reset failed attempts on success
+      setRateLimitState(prev => ({
+        ...prev,
+        failedAttempts: 0,
+        providerStatus: data.providerStatus || []
+      }));
+
+      return data;
+    } catch (error: any) {
+      console.error('Pipeline request error:', error);
+      
+      setRateLimitState(prev => ({
+        ...prev,
+        failedAttempts: prev.failedAttempts + 1
+      }));
+
+      // Auto-retry on network errors if enabled
+      if (rateLimiting.enabled && 
+          attempt < rateLimiting.maxRetries && 
+          (error.name === 'TypeError' || error.message.includes('fetch'))) {
+        
+        const backoffDelay = Math.min(
+          rateLimiting.baseDelay * Math.pow(2, attempt - 1),
+          rateLimiting.maxDelay
+        );
+        
+        console.log(`🔄 Network error, retrying in ${backoffDelay}ms (attempt ${attempt + 1}/${rateLimiting.maxRetries})`);
+        
+        setTimeout(() => {
+          makeVoicePipelineRequest(audio, action, attempt + 1);
+        }, backoffDelay);
+        
+        return null;
+      }
+
+      updateState({
+        error: error.message || 'Voice pipeline request failed',
+        isProcessing: false
+      });
+      return null;
+    }
+  }, [checkRateLimit, rateLimitState, state.messages, interviewType, questions, state.currentQuestionIndex, providers, updateState, rateLimiting]);
+
+  // Enhanced processAudio with better error handling
+  const processAudio = useCallback(async (audioBlob: Blob) => {
+    if (rateLimitState.isRateLimited) {
+      updateState({
+        error: `Rate limit active. Please wait ${rateLimitState.retryAfter} seconds before trying again.`
+      });
+      return;
+    }
+
+    try {
+      updateState({ isProcessing: true, error: null });
+      
+      // Convert blob to base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      
+      const result = await makeVoicePipelineRequest(base64Audio, 'pipeline');
+      
+      if (result) {
+        // Add user message
+        const userMessage: VoiceMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: result.transcript || '',
+          timestamp: Date.now(),
+          metadata: {
+            provider: result.provider,
+            confidence: result.confidence,
+            processingTime: result.metadata?.processingTime
+          }
+        };
+        
+        // Add assistant response
+        const assistantMessage: VoiceMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: result.response || '',
+          timestamp: Date.now(),
+          audioUrl: result.audioUrl,
+          metadata: {
+            provider: result.metadata?.tts?.provider,
+            processingTime: result.metadata?.processingTime
+          }
+        };
+        
+        updateState({
+          messages: [...state.messages, userMessage, assistantMessage],
+          transcript: result.transcript || '',
+          response: result.response || '',
+          isProcessing: false
+        });
+        
+        // Play response audio if available
+        if (result.audioUrl) {
+          await playAudio(result.audioUrl);
+        }
+      }
+    } catch (error: any) {
+      console.error('Audio processing error:', error);
+      updateState({
+        error: error.message || 'Failed to process audio',
+        isProcessing: false
+      });
+    }
+  }, [rateLimitState, makeVoicePipelineRequest, state.messages, updateState]);
+
+  // Retry last request function
+  const retryLastRequest = useCallback(async () => {
+    if (!lastRequestRef.current) {
+      updateState({ error: 'No request to retry' });
+      return;
+    }
+
+    const { audio, action } = lastRequestRef.current;
+    await makeVoicePipelineRequest(audio, action as any);
+  }, [makeVoicePipelineRequest, updateState]);
+
+  // Rate limit countdown effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (rateLimitState.isRateLimited && rateLimitState.retryAfter > 0) {
+      interval = setInterval(() => {
+        setRateLimitState(prev => {
+          const newRetryAfter = prev.retryAfter - 1;
+          if (newRetryAfter <= 0) {
+            return { ...prev, isRateLimited: false, retryAfter: 0 };
+          }
+          return { ...prev, retryAfter: newRetryAfter };
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [rateLimitState.isRateLimited, rateLimitState.retryAfter]);
+
+  // Auto-clear errors after 10 seconds
+  useEffect(() => {
+    if (state.error) {
+      const timer = setTimeout(() => {
+        updateState({ error: null });
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [state.error, updateState]);
+
+  // Play audio utility function
+  const playAudio = useCallback(async (audioUrl: string): Promise<void> => {
+    try {
+      updateState({ isSpeaking: true });
+      
+      const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
+
+      audio.onended = () => {
+        updateState({ isSpeaking: false });
+        currentAudioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        updateState({ isSpeaking: false, error: 'Failed to play audio' });
+        currentAudioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error('Failed to play audio:', error);
+      updateState({ isSpeaking: false, error: 'Failed to play audio' });
+    }
+  }, [updateState]);
+
+  // Speech synthesis utility function
+  const synthesizeSpeech = useCallback(async (text: string): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/voice/pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'tts',
+          text,
+          voice: 'nova',
+          provider: providers?.tts || 'openai'
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.audio) {
+        // Convert base64 audio to blob URL
+        const audioBuffer = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0));
+        const audioBlob = new Blob([audioBuffer], { type: `audio/${result.format || 'mp3'}` });
+        return URL.createObjectURL(audioBlob);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Speech synthesis failed:', error);
+      return null;
+    }
+  }, [providers?.tts]);
 
   // Initialize audio system
   const initializeAudio = useCallback(async (): Promise<MediaStream> => {
@@ -143,7 +537,7 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
     }
   }, [updateState]);
 
-  // Audio level monitoring
+  // Audio level monitoring with enhanced VAD
   const monitorAudioLevel = useCallback(() => {
     if (!analyserRef.current) return;
 
@@ -160,10 +554,10 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
 
     updateState({ audioLevel: level });
 
-    // Voice Activity Detection
+    // Enhanced Voice Activity Detection
     const isSpeaking = level > vadThreshold;
     
-    if (state.isListening && !state.isRecording && isSpeaking) {
+    if (state.isListening && !state.isRecording && isSpeaking && !state.isSpeaking) {
       startRecording();
     } else if (state.isRecording && !isSpeaking) {
       // Start silence timer
@@ -179,7 +573,7 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
     }
 
     animationFrameRef.current = requestAnimationFrame(monitorAudioLevel);
-  }, [vadThreshold, silenceTimeout, state.isListening, state.isRecording, updateState]);
+  }, [vadThreshold, silenceTimeout, state.isListening, state.isRecording, state.isSpeaking, updateState]);
 
   // Start recording
   const startRecording = useCallback(() => {
@@ -249,66 +643,8 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
       updateState({ isProcessing: true });
 
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      await processAudio(audioBlob);
 
-      // Use unified pipeline API
-      const response = await fetch('/api/voice/pipeline', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'pipeline',
-          audio: base64Audio,
-          format: 'webm',
-          language: 'en',
-          context: state.messages,
-          interviewConfig: questions.length > 0 ? {
-            type: interviewType,
-            questions,
-            currentIndex: state.currentQuestionIndex
-          } : undefined,
-          provider: providers
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        const { transcript, response: aiResponse, audio, format, nextQuestion, isComplete } = result;
-
-        // Update transcript
-        updateState({ transcript });
-
-        // Add user message
-        const userMessage: VoiceMessage = {
-          id: `user-${Date.now()}`,
-          role: 'user',
-          content: transcript,
-          timestamp: Date.now()
-        };
-
-        // Add AI response
-        const assistantMessage: VoiceMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: aiResponse,
-          timestamp: Date.now()
-        };
-
-        // Play AI response
-        await playAudioResponse(audio, format);
-
-        updateState({
-          response: aiResponse,
-          messages: [...state.messages, userMessage, assistantMessage],
-          currentQuestionIndex: state.currentQuestionIndex + (nextQuestion ? 1 : 0),
-          isComplete: isComplete || false,
-          isProcessing: false
-        });
-
-      } else {
-        throw new Error(result.error || 'Pipeline processing failed');
-      }
     } catch (error) {
       console.error('Failed to process recording:', error);
       updateState({ 
@@ -316,38 +652,7 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
         isProcessing: false
       });
     }
-  }, [state.messages, state.currentQuestionIndex, interviewType, questions, providers, updateState]);
-
-  // Play audio response
-  const playAudioResponse = useCallback(async (base64Audio: string, format: string): Promise<void> => {
-    try {
-      updateState({ isSpeaking: true });
-
-      const audioBuffer = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0));
-      const audioBlob = new Blob([audioBuffer], { type: `audio/${format}` });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      const audio = new Audio(audioUrl);
-      currentAudioRef.current = audio;
-
-      audio.onended = () => {
-        updateState({ isSpeaking: false });
-        URL.revokeObjectURL(audioUrl);
-        currentAudioRef.current = null;
-      };
-
-      audio.onerror = () => {
-        updateState({ isSpeaking: false, error: 'Failed to play audio response' });
-        URL.revokeObjectURL(audioUrl);
-        currentAudioRef.current = null;
-      };
-
-      await audio.play();
-    } catch (error) {
-      console.error('Failed to play audio:', error);
-      updateState({ isSpeaking: false, error: 'Failed to play audio response' });
-    }
-  }, [updateState]);
+  }, [processAudio, updateState]);
 
   // Send text message (for testing or fallback)
   const sendMessage = useCallback(async (text: string) => {
@@ -373,21 +678,10 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
 
       if (llmResult.success) {
         // Generate TTS for response
-        const ttsResponse = await fetch('/api/voice/pipeline', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'tts',
-            text: llmResult.response,
-            voice: 'nova',
-            provider: providers?.tts || 'openai'
-          })
-        });
+        const audioUrl = await synthesizeSpeech(llmResult.response);
 
-        const ttsResult = await ttsResponse.json();
-
-        if (ttsResult.success) {
-          await playAudioResponse(ttsResult.audio, ttsResult.format);
+        if (audioUrl) {
+          await playAudio(audioUrl);
         }
 
         // Update state
@@ -402,7 +696,8 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
           id: `assistant-${Date.now()}`,
           role: 'assistant',
           content: llmResult.response,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          audioUrl: audioUrl || undefined
         };
 
         updateState({
@@ -420,7 +715,7 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
         isProcessing: false
       });
     }
-  }, [state.messages, state.currentQuestionIndex, interviewType, questions, providers, updateState, playAudioResponse]);
+  }, [state.messages, state.currentQuestionIndex, interviewType, questions, updateState, synthesizeSpeech, playAudio]);
 
   // Public actions
   const startListening = useCallback(async () => {
@@ -514,6 +809,14 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
       currentAudioRef.current = null;
     }
 
+    // Reset rate limiting
+    setRateLimitState(prev => ({
+      ...prev,
+      isRateLimited: false,
+      retryAfter: 0,
+      failedAttempts: 0
+    }));
+
     updateState({
       messages: [],
       transcript: '',
@@ -527,8 +830,18 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
   }, [state.isRecording, stopRecording, updateState]);
 
   // Computed values
-  const canStartListening = !state.isListening && !state.isProcessing && state.connectionStatus !== 'connecting';
-  const isActive = state.isListening || state.isRecording || state.isProcessing || state.isSpeaking;
+  const canStartListening = !state.isListening && 
+    !state.isProcessing && 
+    state.connectionStatus !== 'connecting' &&
+    !rateLimitState.isRateLimited;
+    
+  const isActive = state.isListening || 
+    state.isRecording || 
+    state.isProcessing || 
+    state.isSpeaking;
+  
+  const canMakeRequest = !rateLimitState.isRateLimited && 
+    rateLimitState.failedAttempts < rateLimiting.maxRetries;
   
   const progress = questions.length > 0 ? {
     current: state.currentQuestionIndex,
@@ -541,7 +854,7 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
     return () => {
       stopListening();
     };
-  }, []);
+  }, [stopListening]);
 
   // Auto-start with first question
   useEffect(() => {
@@ -552,11 +865,15 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
         sendMessage(`Let's start the interview. ${initialQuestion}`);
       }
     }
-  }, [state.isListening, questions, state.messages.length, state.isComplete]);
+  }, [state.isListening, questions, state.messages.length, state.isComplete, sendMessage]);
 
   return {
     // State
     ...state,
+    
+    // Rate limiting state
+    rateLimitState,
+    canMakeRequest,
     
     // Actions
     startListening,
@@ -566,6 +883,7 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
     clearError,
     resetConversation,
     sendMessage,
+    retryLastRequest,
     
     // Computed
     canStartListening,
@@ -574,7 +892,7 @@ export function useVoicePipeline(config: VoicePipelineConfig = {}): VoicePipelin
   };
 }
 
-// Additional utility hooks
+// Enhanced utility hooks
 export function useVoicePermissions() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
